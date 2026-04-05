@@ -36,6 +36,13 @@ def test_pyproject_exposes_publish_metadata() -> None:
     assert project["name"] == "opencac"
     assert project["readme"] == "README.md"
     assert project["license"] == "MIT"
+    keywords = set(project["keywords"])
+    assert "claude-code" in keywords
+    assert "codex" in keywords
+    assert "antigravity" in keywords
+    assert "multi-agent-orchestration" in keywords
+    assert "speculative-decoding" in keywords
+    assert "llama-cpp" in keywords
     assert "Homepage" in project["urls"]
     assert "Repository" in project["urls"]
     assert "Issues" in project["urls"]
