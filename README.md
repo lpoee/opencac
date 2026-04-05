@@ -8,7 +8,7 @@ opencac run "refactor the auth module" --mode private
 ```
 ##  Why
 ```
-- o orchestration layer today — AI coding agents work in isolation; stitching them together means copy-paste or throwaway glue scripts
+- No orchestration layer today — AI coding agents work in isolation; stitching them together means copy-paste or throwaway glue scripts
 - Cloud tokens add up fast — every round-trip to a hosted model costs real money
 - Local LLMs are cheap but limited — a single small model can't carry a full research-plan-execute workflow on its own
 
