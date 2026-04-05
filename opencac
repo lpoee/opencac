@@ -2,4 +2,4 @@
 set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-exec "$SCRIPT_DIR/scripts/a2a.sh" "$@"
+exec "$SCRIPT_DIR/scripts/opencac.sh" "$@"
