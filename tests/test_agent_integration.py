@@ -229,8 +229,9 @@ class AgentIntegrationTests(BasePipelineTestCase):
             }
             from opencac.agents import CodexExecutor, RoutingConfig
 
-            executor = CodexExecutor(RoutingConfig(mode="private"), InferenceConfig(), workspace, audit)
-            result = executor.execute(plan)
+            with mock.patch("shutil.which", return_value=None):
+                executor = CodexExecutor(RoutingConfig(mode="private"), InferenceConfig(), workspace, audit)
+                result = executor.execute(plan)
             gen_step = next(s for s in result["payload"]["steps_completed"] if s["step_id"] == 2)
             self.assertEqual(gen_step["status"], "failed")
             self.assertIn("codex binary", gen_step["output"])
