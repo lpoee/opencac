@@ -4,9 +4,9 @@ OpenCAC is a CLI and HTTP service for orchestrating a hybrid workflow across Cla
 
 ## Core Pain Points
 
-- orchestration
-- cloud API expensive
-- local LLM weak
+- orchestration is hard
+- cloud APIs are expensive
+- local LLMs are still too weak to handle the full workflow on their own
 
 ## How It Works
 
@@ -16,10 +16,10 @@ OpenCAC provides:
 - a protocol flow:
   - `dispatcher -> antigravity -> claude-code -> codex`
 - `Sidecar` schema validation
-- `JSONL` audit
-- `resume`
+- `JSONL` audit logging
+- session resume
 - `private` / `cloud` / `hybrid` routing skeleton
-- Docker / packaging / README / CI release surface
+- Docker, packaging, README, and CI release surface
 - a local mock / local-endpoint-driven test harness
 
 It runs four roles:
