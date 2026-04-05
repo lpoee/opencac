@@ -56,6 +56,7 @@ def test_release_and_docker_workflows_exist() -> None:
     assert "actions/upload-artifact@v4" in release
     assert "python -m build" in release
     assert "python -m twine check dist/*" in release
+    assert "PYPI_API_TOKEN" in release
     assert "docker/build-push-action@v6" in docker
     assert "docker/metadata-action@v5" in docker
     assert "ghcr.io/lpoee/opencac" in docker
@@ -69,3 +70,10 @@ def test_compose_file_wires_opencac_service() -> None:
     assert "host.docker.internal:18102" in compose
     assert "host.docker.internal:18103" in compose
     assert "A2A_CLOUD_FALLBACK_LOCAL" in compose
+
+
+def test_public_launchers_target_opencac_cli() -> None:
+    root_launcher = (ROOT / "opencac").read_text(encoding="utf-8")
+    script_launcher = (ROOT / "scripts" / "opencac.sh").read_text(encoding="utf-8")
+    assert 'exec "$SCRIPT_DIR/scripts/opencac.sh" "$@"' in root_launcher
+    assert "python3 -m opencac.cli" in script_launcher
