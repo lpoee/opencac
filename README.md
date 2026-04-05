@@ -8,9 +8,11 @@ OpenCAC is a CLI and HTTP service for orchestrating a hybrid workflow across Cla
 - cloud API expensive
 - local LLM weak
 
-## Technical Features
+## How It Works
 
-- an OpenCAC CLI / HTTP service
+OpenCAC provides:
+
+- a CLI and HTTP service
 - a protocol flow:
   - `dispatcher -> antigravity -> claude-code -> codex`
 - `Sidecar` schema validation
@@ -20,9 +22,7 @@ OpenCAC is a CLI and HTTP service for orchestrating a hybrid workflow across Cla
 - Docker / packaging / README / CI release surface
 - a local mock / local-endpoint-driven test harness
 
-## How It Works
-
-OpenCAC runs four roles:
+It runs four roles:
 
 - `user`
 - `researcher`
