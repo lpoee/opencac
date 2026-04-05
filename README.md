@@ -2,20 +2,23 @@
 
 **OpenCAC is multi-agent orchestration CLI for AI coding tools. Wires Claude Code, Antigravity, and Codex into one pipeline with validated handoffs, audit logging, and speculative decoding for local LLMs.**
 
-
 ```bash
 pip install .
 opencac run "refactor the auth module" --mode private
 ```
-##  Why
+
+## Why
+
 For developers who already use multiple AI coding agents and want one CLI to orchestrate them — with cloud models, local LLMs, or both.
+
 ```
-   - Claude Code, Codex, Antigravity powerful alone, but each runs in its own world        
-   - Cloud api burns money — every hosted model call costs real tokens.         
-   - Local LLMs lack quality — small models are cheap but can't reliably produce production-grade code. 
+   - Claude Code, Codex, Antigravity powerful alone, but each runs in its own world
+   - Cloud api burns money — every hosted model call costs real tokens.
+   - Local LLMs lack quality — small models are cheap but can't reliably produce production-grade code.
 
 OpenCAC solves this by chaining agents into a four-role pipeline where each agent does what it's best at, with structured validation at every hop.
 ```
+
 ## Features
 
 ```
@@ -63,7 +66,7 @@ python3 -m venv .venv && . .venv/bin/activate && pip install .
 ```
 
 ```bash
-# Private
+# Private (local llama.cpp shards)
 export A2A_ANTIGRAVITY_URL=http://127.0.0.1:18101
 export A2A_CLAUDE_CODE_URL=http://127.0.0.1:18102
 export A2A_CODEX_URL=http://127.0.0.1:18103
@@ -79,6 +82,33 @@ opencac run "task" --mode cloud
 export A2A_CLOUD_FALLBACK_LOCAL=1
 opencac run "task" --mode cloud
 ```
+
+## Agent Integration
+
+Connect real AI agents for production-quality research, planning, and code generation.
+When set, the pipeline calls real agents first and falls back to local heuristics on failure.
+
+```bash
+# Antigravity — Gemini research via JSON-RPC (A2A protocol)
+export OPENCAC_RESEARCH_URL=http://127.0.0.1:18791
+
+# Claude Code — planning via Claude Bridge (Anthropic messages API)
+export OPENCAC_PLANNER_URL=http://127.0.0.1:9300
+
+# Codex — AI code generation via CLI
+export OPENCAC_CODEX_BINARY=/usr/local/bin/codex
+
+opencac run "refactor the auth module" --mode private
+```
+
+| Variable               | Agent         | Protocol                    | Purpose                    |
+| ---------------------- | ------------- | --------------------------- | -------------------------- |
+| `OPENCAC_RESEARCH_URL` | Antigravity   | JSON-RPC 2.0 `message/send` | Web research via Gemini    |
+| `OPENCAC_PLANNER_URL`  | Claude Bridge | `POST /v1/messages`         | Plan generation via Claude |
+| `OPENCAC_CODEX_BINARY` | Codex CLI     | JSONL subprocess            | AI code generation         |
+
+The `generate` plan action dispatches work to Codex CLI for AI-assisted code generation.
+Without these variables, the pipeline uses deterministic local heuristics (file search, template plans, subprocess execution).
 
 Docker:
 

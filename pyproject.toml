@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "opencac"
-version = "0.1.0"
+version = "0.2.0"
 description = "OpenCAC: Claude Code, Antigravity, and Codex working together across cloud APIs and local models."
 requires-python = ">=3.9"
 authors = [{ name = "Codex" }]

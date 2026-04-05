@@ -74,6 +74,12 @@ ROLE_URL_ENV = {
     "codex": "A2A_CODEX_URL",
 }
 
+AGENT_SERVICE_ENV = {
+    "antigravity": "OPENCAC_RESEARCH_URL",
+    "claude-code": "OPENCAC_PLANNER_URL",
+    "codex": "OPENCAC_CODEX_BINARY",
+}
+
 
 def _cloud_token_present(role: str) -> bool:
     token_env = CLOUD_TOKEN_ENV[role]
@@ -259,6 +265,114 @@ def _probe_local_llm(mode: str, base_url: str, role: str) -> Dict[str, Any]:
     return {"endpoint": base_url, "probe": content}
 
 
+def _call_research_service(url: str, query: str, session_id: str) -> Dict[str, Any]:
+    """Call Antigravity A2A service via JSON-RPC 2.0."""
+    rpc_request = {
+        "jsonrpc": "2.0",
+        "id": str(uuid.uuid4()),
+        "method": "message/send",
+        "params": {
+            "message": {"parts": [{"type": "text", "text": query}]},
+            "sessionId": session_id,
+        },
+    }
+    data = json.dumps(rpc_request, ensure_ascii=False).encode("utf-8")
+    request = Request(url.rstrip("/"), data=data, headers={"Content-Type": "application/json"}, method="POST")
+    with urlopen(request, timeout=LLM_TIMEOUT) as response:
+        result = json.loads(response.read().decode("utf-8"))
+    rpc_result = result.get("result", {})
+    parts = rpc_result.get("status", {}).get("message", {}).get("parts", [])
+    if not parts:
+        raise RuntimeError("research service returned empty response")
+    text = parts[0].get("text", "")
+    try:
+        envelope = json.loads(text)
+        return envelope.get("payload", envelope)
+    except (json.JSONDecodeError, TypeError):
+        return {
+            "query": query,
+            "summary": text[:500],
+            "findings": [{"title": "Research response", "content": text[:300], "confidence": "high", "source_refs": [0]}],
+            "sources": [],
+            "model_used": "antigravity",
+            "search_queries": [query],
+            "stats": {"duration_ms": 0, "tokens_used": 0, "web_searches": 1},
+        }
+
+
+def _call_planner_service(url: str, goal: str, context: str) -> str:
+    """Call Claude Bridge via Anthropic messages API. Returns raw text."""
+    payload = {
+        "model": "claude-sonnet",
+        "system": (
+            "You are the planning agent in the OpenCAC multi-agent pipeline. "
+            "Given research findings about a coding task, produce an executable plan as JSON.\n\n"
+            "Output ONLY valid JSON, no markdown fences:\n"
+            '{"steps": [{"id": 1, "action": "<action>", "description": "...", '
+            '"file_path": "...", "command": "...", "depends_on": []}], '
+            '"constraints": ["..."], "acceptance_criteria": ["..."]}\n\n'
+            "Actions: create (directory), edit (file), run (shell, no | && ; > $(`), "
+            "test (test cmd), verify (summary), generate (AI code gen via codex), delete.\n"
+            "Use <session_id> placeholder in file_path. Integer IDs from 1."
+        ),
+        "messages": [{"role": "user", "content": f"Goal: {goal}\n\nResearch context:\n{context}"}],
+    }
+    data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    request = Request(f"{url.rstrip('/')}/v1/messages", data=data, headers={"Content-Type": "application/json"}, method="POST")
+    with urlopen(request, timeout=LLM_TIMEOUT) as response:
+        result = json.loads(response.read().decode("utf-8"))
+    content = result.get("content", [])
+    if content and isinstance(content[0], dict) and content[0].get("type") == "text":
+        return content[0]["text"]
+    raise RuntimeError("planner service returned no text content")
+
+
+def _parse_plan_json(raw: str) -> Dict[str, Any]:
+    """Parse plan JSON from AI response, stripping markdown fences if present."""
+    text = raw.strip()
+    if text.startswith("```"):
+        lines = text.split("\n")
+        start = 1
+        end = len(lines)
+        for i in range(len(lines) - 1, 0, -1):
+            if lines[i].strip() == "```":
+                end = i
+                break
+        text = "\n".join(lines[start:end]).strip()
+    return json.loads(text)
+
+
+def _call_codex_exec(binary: str, prompt: str, *, workspace: Optional[Path] = None, timeout: int = 600) -> Dict[str, Any]:
+    """Call Codex CLI and parse JSONL output."""
+    args = [binary, "exec", "--dangerously-bypass-approvals-and-sandbox", "--skip-git-repo-check", "--json", prompt]
+    proc = subprocess.run(args, cwd=str(workspace) if workspace else None, text=True, capture_output=True, timeout=timeout)
+    messages: List[str] = []
+    thread_id: Optional[str] = None
+    for line in proc.stdout.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        try:
+            event = json.loads(stripped)
+        except json.JSONDecodeError:
+            continue
+        event_type = event.get("type", "")
+        if event_type == "thread.started":
+            thread_id = event.get("thread_id")
+        elif event_type == "item.completed":
+            item = event.get("item", {})
+            if item.get("type") == "agent_message":
+                text_parts = [part.get("text", "") for part in item.get("content", []) if part.get("type") in ("output_text", "text")]
+                if text_parts:
+                    messages.append("".join(text_parts))
+    return {
+        "thread_id": thread_id,
+        "messages": messages,
+        "output": "\n".join(messages) if messages else proc.stdout[:2000],
+        "exit_code": proc.returncode,
+    }
+
+
 def ensure_private_runtime(inference: "InferenceConfig") -> Dict[str, Any]:
     guard_script = Path.home() / ".local" / "bin" / "opencac-private-guard"
     if not guard_script.exists():
@@ -316,6 +430,9 @@ class InferenceConfig:
     antigravity_url: Optional[str] = None
     claude_code_url: Optional[str] = None
     codex_url: Optional[str] = None
+    research_service_url: Optional[str] = None
+    planner_service_url: Optional[str] = None
+    codex_binary: Optional[str] = None
 
     def __post_init__(self) -> None:
         if not self.speculative:
@@ -353,6 +470,20 @@ class InferenceConfig:
         if mode == "cloud" and _cloud_fallback_enabled() and not _cloud_token_present(role):
             return _default_role_url(role)
         return None
+
+    def service_url(self, role: str) -> Optional[str]:
+        """Resolve real agent service URL from explicit config or env."""
+        explicit = {"antigravity": self.research_service_url, "claude-code": self.planner_service_url}.get(role)
+        if explicit:
+            return explicit
+        env_key = AGENT_SERVICE_ENV.get(role, "")
+        return os.getenv(env_key, "").strip() or None
+
+    def codex_bin(self) -> Optional[str]:
+        """Resolve codex binary path from explicit config or env."""
+        if self.codex_binary:
+            return self.codex_binary
+        return os.getenv(AGENT_SERVICE_ENV.get("codex", ""), "").strip() or None
 
     def strategy_label(self) -> str:
         if not self.speculative:

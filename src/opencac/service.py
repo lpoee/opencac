@@ -12,7 +12,7 @@ from typing import Any, Dict, Optional
 from urllib.parse import parse_qs, urlparse
 
 from .agents import Antigravity, ClaudeCodePlanner, CodexExecutor, InferenceConfig, RoutingConfig, Sidecar, ensure_private_runtime, make_envelope, run_pipeline
-from .audit import AuditLog
+from .audit import AuditLog, utc_now
 from .runtime import HTTP_TIMEOUT
 
 
@@ -52,7 +52,7 @@ class FabricRuntime:
         base = f"http://{self.host}:{self.port}"
         return {
             "name": "opencac",
-            "version": "0.1.0",
+            "version": "0.2.0",
             "capabilities": {
                 "speculative_decoding_required": True,
                 "distributed_run": True,
@@ -154,7 +154,7 @@ class FabricRuntime:
             payload["callback_url"] = callback_url
         instruction = {
             "msg_id": dispatcher_msg_id,
-            "timestamp": "dispatcher",
+            "timestamp": utc_now(),
             "from_agent": "dispatcher",
             "to_agent": "antigravity",
             "msg_type": "research_request",
