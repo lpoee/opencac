@@ -13,52 +13,44 @@ Three agents. Zero coordination. You're copy-pasting between Claude Code, Codex,
 
 OpenCAC fixes this: one pipeline, validated handoffs, full audit trail. Run it on the cloud, on local llama.cpp with spec decoding, or both. Your agents finally talk to each other.
 
-## 1. Four-role pipeline
+## Features
 
 ```
-dispatcher → antigravity (research) → claude-code (plan) → codex (execute)
+1. FOUR-ROLE PIPELINE
+   dispatcher → antigravity (research) → claude-code (plan) → codex (execute)
+   - Structured envelopes at every hop; downstream critiques upstream before acting
+   - Codex runs assess_plan — dangerous commands rejected, not blindly run
+
+2. ROUTING MODES
+   private   Loopback only. Private guard required. For sensitive / air-gapped work.
+   cloud     Cloud API tokens. No local infra needed.
+   hybrid    Cloud first, falls back to local LLM when tokens are missing.
+
+3. LOCAL LLM SUPPORT
+   - Each role points to its own llama.cpp server endpoint
+   - Built-in spec decoding config (n-gram / draft-model) → generates llama-server commands
+   - Probe: constrained-grammar check verifies each endpoint before pipeline starts
+
+4. SIDECAR VALIDATION
+   - Schema check on every hop — agent whitelist, message-type whitelist, payload fields
+   - Blocked commands: rm -rf /, shutdown, mkfs, fork bomb
+   - Private mode: loopback-only on all URLs including callbacks
+
+5. JSONL AUDIT LOG
+   - One JSON line per action — timestamp, session_id, kind
+   - Filter by session, query last N entries
+   - Session resume: rebuild plan from log, skip completed steps
+
+6. CLI + HTTP
+   CLI          opencac run, opencac audit, opencac resume, interactive REPL
+   HTTP         POST /run, GET /tasks/<id>, per-agent endpoints, /.well-known/agent.json
+   Distributed  CLI routes through HTTP service, sync and async
+
+7. SMART QUESTION ROUTING
+   - Ends with ? or starts with who/what/how/why → QA path, skips pipeline
+   - Task input → full pipeline, outputs artifacts
+   - Mentions docs/code/error/test → research step first
 ```
-
-- Each layer outputs a structured envelope; the next layer critiques it before acting
-- Codex runs `assess_plan` before execution — dangerous commands get rejected, not blindly run
-
-## 2. Routing modes
-
-| Mode      |                                                                                        |
-| --------- | -------------------------------------------------------------------------------------- |
-| `private` | Loopback only. Private guard must be enabled. For sensitive code or air-gapped setups. |
-| `cloud`   | Cloud API tokens.                                                                      |
-| `hybrid`  | Cloud first, falls back to local LLM when tokens are missing.                          |
-
-## 3. Local LLM support
-
-- Each role can point to its own llama.cpp server endpoint
-- Built-in speculative decoding config (n-gram / draft-model) — generates ready-to-use `llama-server` launch commands
-- Probe mechanism: verifies each LLM endpoint with a constrained-grammar check before the pipeline starts
-
-## 4. Sidecar validation
-
-- Every hop's envelope is schema-checked — agent whitelist, message-type whitelist, required payload fields
-- Blocked command list (`rm -rf /`, `shutdown`, `mkfs`, fork bomb)
-- Private mode enforces loopback-only on all URLs, including callbacks
-
-## 5. JSONL audit log
-
-- One JSON line per action — timestamp, session_id, kind
-- Filter by session, query the last N entries
-- Session resume: rebuilds the plan from the log, skips completed steps
-
-## 6. CLI + HTTP
-
-- **CLI**: `opencac run "task"`, `opencac audit`, `opencac resume <session-id>`, interactive REPL
-- **HTTP**: `POST /run`, `GET /tasks/<id>`, per-agent endpoints, agent card at `/.well-known/agent.json`
-- **Distributed**: CLI routes through the HTTP service, supports sync and async
-
-## 7. Smart question routing
-
-- Input ends with `?` or starts with `who`/`what`/`how`/`why` → answered directly, skips the pipeline
-- Input is a task → runs the full pipeline, outputs artifacts
-- Question mentions `docs`, `code`, `error`, `test` → research step runs first
 
 ## Quick start
 
