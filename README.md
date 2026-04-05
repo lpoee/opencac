@@ -9,10 +9,11 @@ opencac run "refactor the auth module" --mode private
 
 ## Why
 
-No standard orchestration layer for multi-agent AI coding. Claude Code, Codex, Antigravity each work in isolation — copy-paste between them, or write glue scripts. OpenCAC turns this into one pipeline.
+- **No orchestration layer.** Claude Code, Codex, Antigravity — they all work in isolation. You end up copy-pasting between them or writing glue scripts. OpenCAC turns that into a single pipeline.
+- **Cloud tokens are expensive.** Chaining research, planning, and execution across three models adds up fast.
+- **Local LLMs are cheap but not good enough on their own.** They can handle parts of the workflow, just not all of it.
 
-- Cloud tokens are expensive
-- Local LLMs are cheap but too weak to handle the full workflow alone
+OpenCAC brings Claude Code, Codex, and Antigravity (or any local LLM) into one automated pipeline — protocol-validated, fully audited, runs locally or in the cloud — instead of three tools that don't talk to each other.
 
 ## 1. Four-role pipeline
 
@@ -20,46 +21,46 @@ No standard orchestration layer for multi-agent AI coding. Claude Code, Codex, A
 dispatcher → antigravity (research) → claude-code (plan) → codex (execute)
 ```
 
-- Structured envelopes at every hop, downstream critiques upstream before acting
-- Codex runs `assess_plan` before execution — dangerous commands rejected, not run
+- Each layer outputs a structured envelope; the next layer critiques it before acting
+- Codex runs `assess_plan` before execution — dangerous commands get rejected, not blindly run
 
-## 2. Three routing modes
+## 2. Routing modes
 
-| Mode      |                                                                        |
-| --------- | ---------------------------------------------------------------------- |
-| `private` | Loopback only, private-guard required, for sensitive code / air-gapped |
-| `cloud`   | Cloud API tokens                                                       |
-| `hybrid`  | Cloud first, auto fallback to local LLM when tokens missing            |
+| Mode      |                                                                                        |
+| --------- | -------------------------------------------------------------------------------------- |
+| `private` | Loopback only. Private guard must be enabled. For sensitive code or air-gapped setups. |
+| `cloud`   | Cloud API tokens.                                                                      |
+| `hybrid`  | Cloud first, falls back to local LLM when tokens are missing.                          |
 
 ## 3. Local LLM support
 
-- Each role points to its own llama.cpp server endpoint
-- Built-in spec decoding config (n-gram / draft-model), generates `llama-server` launch commands
-- Probe: constrained-grammar check verifies each endpoint before pipeline starts
+- Each role can point to its own llama.cpp server endpoint
+- Built-in speculative decoding config (n-gram / draft-model) — generates ready-to-use `llama-server` launch commands
+- Probe mechanism: verifies each LLM endpoint with a constrained-grammar check before the pipeline starts
 
 ## 4. Sidecar validation
 
-- Schema check on every hop — agent whitelist, message-type whitelist, required payload fields
-- Blocked commands (`rm -rf /`, `shutdown`, `mkfs`, fork bomb)
-- Private mode enforces loopback-only on all URLs including callbacks
+- Every hop's envelope is schema-checked — agent whitelist, message-type whitelist, required payload fields
+- Blocked command list (`rm -rf /`, `shutdown`, `mkfs`, fork bomb)
+- Private mode enforces loopback-only on all URLs, including callbacks
 
 ## 5. JSONL audit log
 
 - One JSON line per action — timestamp, session_id, kind
-- Filter by session, query last N
-- Session resume: rebuild plan from log, skip completed steps
+- Filter by session, query the last N entries
+- Session resume: rebuilds the plan from the log, skips completed steps
 
 ## 6. CLI + HTTP
 
-- **CLI**: `opencac run`, `opencac audit`, `opencac resume <session-id>`, interactive REPL
+- **CLI**: `opencac run "task"`, `opencac audit`, `opencac resume <session-id>`, interactive REPL
 - **HTTP**: `POST /run`, `GET /tasks/<id>`, per-agent endpoints, agent card at `/.well-known/agent.json`
-- **Distributed**: CLI routes through HTTP service, sync and async
+- **Distributed**: CLI routes through the HTTP service, supports sync and async
 
 ## 7. Smart question routing
 
-- Input ends with `?` or starts with `who/what/how/why` → QA path, skips pipeline
-- Input is a task → full pipeline, outputs artifacts
-- Question contains `docs`, `code`, `error`, `test` → research step before answer
+- Input ends with `?` or starts with `who`/`what`/`how`/`why` → answered directly, skips the pipeline
+- Input is a task → runs the full pipeline, outputs artifacts
+- Question mentions `docs`, `code`, `error`, `test` → research step runs first
 
 ## Quick start
 
