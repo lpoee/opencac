@@ -81,7 +81,8 @@ def _cloud_token_present(role: str) -> bool:
 
 
 def _cloud_fallback_enabled() -> bool:
-    return os.getenv("A2A_CLOUD_FALLBACK_LOCAL", "0").strip().lower() not in {"0", "false", "off", "no"}
+    value = os.getenv("A2A_CLOUD_FALLBACK_LOCAL", "0").strip().lower()
+    return value not in {"", "0", "false", "off", "no"}
 
 
 def make_envelope(
@@ -291,10 +292,11 @@ class RoutingConfig:
                 "claude-code": "local-llm",
                 "codex": "local-llm",
             }
+        fallback_enabled = _cloud_fallback_enabled()
         return {
-            "antigravity": "cloud-search" if _cloud_token_present("antigravity") else "local-fallback-rag",
-            "claude-code": "cloud-planner" if _cloud_token_present("claude-code") else "local-fallback-llm",
-            "codex": "cloud-exec" if _cloud_token_present("codex") else "local-exec",
+            "antigravity": "cloud-search" if _cloud_token_present("antigravity") else ("local-fallback-rag" if fallback_enabled else "cloud-unavailable"),
+            "claude-code": "cloud-planner" if _cloud_token_present("claude-code") else ("local-fallback-llm" if fallback_enabled else "cloud-unavailable"),
+            "codex": "cloud-exec" if _cloud_token_present("codex") else ("local-exec" if fallback_enabled else "cloud-unavailable"),
         }
 
 
@@ -316,8 +318,8 @@ class InferenceConfig:
     codex_url: Optional[str] = None
 
     def __post_init__(self) -> None:
-        # System policy: every task uses speculative decoding.
-        self.speculative = True
+        if not self.speculative:
+            raise ValueError("speculative decoding is required")
 
     def resolve_draft_model(self) -> Optional[str]:
         if self.draft_model:

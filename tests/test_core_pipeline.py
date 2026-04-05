@@ -75,6 +75,23 @@ class CorePipelineTests(BasePipelineTestCase):
                     server.shutdown()
                     server.server_close()
 
+    def test_cloud_mode_does_not_fallback_to_local_by_default(self) -> None:
+        with mock.patch.dict(os.environ, {
+            "A2A_CLOUD_FALLBACK_LOCAL": "",
+            "A2A_ANTIGRAVITY_TOKEN": "",
+            "A2A_CLAUDE_CODE_TOKEN": "",
+            "A2A_CODEX_TOKEN": "",
+            "A2A_ANTIGRAVITY_URL": "",
+            "A2A_CLAUDE_CODE_URL": "",
+            "A2A_CODEX_URL": "",
+        }, clear=False):
+            from opencac.agents import RoutingConfig
+
+            inference = InferenceConfig()
+            routing = RoutingConfig(mode="cloud")
+            self.assertIsNone(inference.role_url("codex", "cloud"))
+            self.assertEqual(routing.provider_map["codex"], "cloud-unavailable")
+
     def test_pipeline_writes_audit_and_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
@@ -311,9 +328,9 @@ class CorePipelineTests(BasePipelineTestCase):
             self.assertEqual(result["result"]["payload"]["strategy"], "draft-model")
             self.assertIn("--draft-model gpt-oss:small-draft", result["result"]["payload"]["runtime_command"])
 
-    def test_speculative_is_forced_even_if_disabled_in_config(self) -> None:
-        config = InferenceConfig(speculative=False)
-        self.assertTrue(config.speculative)
+    def test_speculative_cannot_be_disabled_in_config(self) -> None:
+        with self.assertRaises(ValueError):
+            InferenceConfig(speculative=False)
 
     def test_resume_replays_from_logged_plan(self) -> None:
         from opencac.agents import resume_pipeline
