@@ -2,16 +2,16 @@
 
 **One pipeline for Claude Code, Codex, and Antigravity — validated handoffs, audit logging, and speculative decoding for local LLMs.**
 
+```bash
+pip install .
+opencac run "refactor the auth module" --mode private
+```
+##  Why
 - **No orchestration layer today** — AI coding agents work in isolation; stitching them together means copy-paste or throwaway glue scripts
 - **Cloud tokens add up fast** — every round-trip to a hosted model costs real money
 - **Local LLMs are cheap but limited** — a single small model can't carry a full research-plan-execute workflow on its own
 
 OpenCAC solves this by chaining agents into a four-role pipeline where each agent does what it's best at, with structured validation at every hop.
-
-```bash
-pip install .
-opencac run "refactor the auth module" --mode private
-```
 
 ## Features
 
