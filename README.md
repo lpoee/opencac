@@ -9,8 +9,8 @@ opencac run "refactor the auth module" --mode private
 ##  Why
 ```
    - Claude Code, Codex, Antigravity powerful alone, but each runs in its own world        
-   - Cloud-only burns money — every hosted model call costs real tokens.         
-   - Local-only lacks range — one small LLM can't research, plan, and ship on its own.
+   - Cloud api burns money — every hosted model call costs real tokens.         
+   - Local llm are weak - hard to produced quality code
 
 OpenCAC solves this by chaining agents into a four-role pipeline where each agent does what it's best at, with structured validation at every hop.
 ```
