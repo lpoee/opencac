@@ -13,5 +13,5 @@ RUN python -m pip install --upgrade pip && \
 
 EXPOSE 8000
 
-ENTRYPOINT ["a2a"]
+ENTRYPOINT ["opencac"]
 CMD ["serve", "--host", "0.0.0.0", "--port", "8000", "--workspace", "/data"]

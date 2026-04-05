@@ -10,7 +10,21 @@ requires-python = ">=3.9"
 authors = [{ name = "Codex" }]
 readme = "README.md"
 license = { file = "LICENSE" }
-keywords = ["opencac", "agent", "cli", "jsonl", "workflow"]
+keywords = [
+    "opencac",
+    "claude-code",
+    "codex",
+    "multi-agent",
+    "agent-orchestration",
+    "coding-agent-collaboration",
+    "multi-model-coding",
+    "ai-pair-programming",
+    "local-llm",
+    "hybrid-ai",
+    "jsonl",
+    "audit-log",
+    "speculative-decoding",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -27,9 +41,9 @@ classifiers = [
 opencac = "a2a_fabric.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/lpoeeo/opencac"
-Repository = "https://github.com/lpoeeo/opencac"
-Issues = "https://github.com/lpoeeo/opencac/issues"
+Homepage = "https://github.com/lpoee/opencac"
+Repository = "https://github.com/lpoee/opencac"
+Issues = "https://github.com/lpoee/opencac/issues"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

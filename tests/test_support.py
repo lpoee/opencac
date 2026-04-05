@@ -121,6 +121,39 @@ class BasePipelineTestCase(unittest.TestCase):
         super().setUpClass()
         cls._default_role_servers = []
         cls._default_role_env_backup = {name: os.environ.get(name) for name in ROLE_URL_ENV.values()}
+        cls._guard_script = Path.home() / ".local" / "bin" / "a2a-private-guard"
+        cls._guard_created = not cls._guard_script.exists()
+        if cls._guard_created:
+            cls._guard_script.parent.mkdir(parents=True, exist_ok=True)
+            cls._guard_script.write_text(
+                """#!/bin/sh
+STATE_FILE="${HOME}/.local/state/opencac-private-guard.state"
+mkdir -p "$(dirname "$STATE_FILE")"
+case "${1:-status}" in
+  enable)
+    printf 'enabled\n' > "$STATE_FILE"
+    printf 'enabled\n'
+    ;;
+  disable)
+    printf 'disabled\n' > "$STATE_FILE"
+    printf 'disabled\n'
+    ;;
+  status)
+    if [ -f "$STATE_FILE" ]; then
+      cat "$STATE_FILE"
+    else
+      printf 'disabled\n'
+    fi
+    ;;
+  *)
+    printf 'usage: %s [enable|disable|status]\n' "$0" >&2
+    exit 2
+    ;;
+esac
+""",
+                encoding="utf-8",
+            )
+            cls._guard_script.chmod(0o755)
         for role, port in DEFAULT_TEST_ROLE_PORTS.items():
             server, _handler = start_local_llm_server(port, role)
             cls._default_role_servers.append(server)
@@ -131,6 +164,8 @@ class BasePipelineTestCase(unittest.TestCase):
         for server in getattr(cls, "_default_role_servers", []):
             server.shutdown()
             server.server_close()
+        if getattr(cls, "_guard_created", False) and getattr(cls, "_guard_script", None):
+            cls._guard_script.unlink(missing_ok=True)
         for name, value in getattr(cls, "_default_role_env_backup", {}).items():
             if value is None:
                 os.environ.pop(name, None)

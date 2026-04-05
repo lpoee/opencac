@@ -342,7 +342,7 @@ def _render_interactive_result(prompt: str, result: dict, inference: InferenceCo
 
 def run_interactive(*, stdin: TextIO, stdout: TextIO) -> int:
     state = InteractiveState()
-        stdout.write("OpenCAC interactive mode\n")
+    stdout.write("OpenCAC interactive mode\n")
     stdout.write(f"mode={state.mode} distributed={'on' if state.distributed else 'off'} base_url={state.base_url}\n")
     _print_interactive_help(stdout)
     while True:
@@ -417,3 +417,4 @@ def run_interactive(*, stdin: TextIO, stdout: TextIO) -> int:
             stdout.write(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
         else:
             stdout.write(_render_interactive_result(line, result, inference, state.mode) + "\n")
+    return 0
