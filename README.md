@@ -1,32 +1,24 @@
 # OpenCAC
 
-OpenCAC is a CLI and HTTP app for running a multi-step agent workflow with a clear execution trail.
+OpenCAC is a CLI and HTTP service for orchestrating a hybrid workflow across Claude Code, Antigravity, Codex, cloud APIs, and local LLMs.
 
-It is built for a common pain point: you want one command that can research, plan, and execute work, but you also want to know what happened, what was written, and why it failed when it fails.
+## Core Pain Points
 
-OpenCAC gives you:
+- orchestration
+- cloud API expensive
+- local LLM weak
 
-- a single CLI entrypoint: `opencac`
-- a local HTTP service for distributed runs
-- a JSONL audit log for every atomic state change
-- resumable sessions
-- local, cloud, and hybrid model routing
+## Technical Features
 
-## Why People Use It
-
-Most agent tools fail in one of these ways:
-
-- they hide too much of the process
-- they are hard to run locally
-- they break when cloud credentials are missing
-- they do work but leave weak audit trails
-
-OpenCAC is designed to be easier to trust and easier to debug:
-
-- every step is logged
-- artifacts are written to disk
-- local model endpoints are supported directly
-- cloud mode can fall back to local mode when configured
+- an OpenCAC CLI / HTTP service
+- a protocol flow:
+  - `dispatcher -> antigravity -> claude-code -> codex`
+- `Sidecar` schema validation
+- `JSONL` audit
+- `resume`
+- `private` / `cloud` / `hybrid` routing skeleton
+- Docker / packaging / README / CI release surface
+- a local mock / local-endpoint-driven test harness
 
 ## How It Works
 
