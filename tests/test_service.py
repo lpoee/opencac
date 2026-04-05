@@ -7,7 +7,7 @@ class ServiceTests(BasePipelineTestCase):
     def test_http_run_returns_structured_error_when_private_guard_fails(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
-            audit = AuditLog(workspace / ".a2a" / "audit.jsonl")
+            audit = AuditLog(workspace / ".opencac" / "audit.jsonl")
             thread = threading.Thread(
                 target=serve,
                 kwargs={"host": "127.0.0.1", "port": 18780, "workspace": workspace, "audit": audit},
@@ -18,19 +18,19 @@ class ServiceTests(BasePipelineTestCase):
 
             payload = json.dumps({"prompt": "guard failure", "mode": "private"}).encode("utf-8")
             request = Request("http://127.0.0.1:18780/run", data=payload, headers={"Content-Type": "application/json"})
-            with mock.patch("a2a_fabric.runtime.subprocess.run") as run_mock:
-                run_mock.return_value = subprocess.CompletedProcess(["a2a-private-guard", "status"], 0, stdout="disabled\n", stderr="")
+            with mock.patch("opencac.runtime.subprocess.run") as run_mock:
+                run_mock.return_value = subprocess.CompletedProcess(["opencac-private-guard", "status"], 0, stdout="disabled\n", stderr="")
                 with self.assertRaises(Exception) as ctx:
                     urlopen(request, timeout=5)
                 body = ctx.exception.read().decode("utf-8")
                 data = json.loads(body)
                 self.assertEqual(data["error_type"], "RuntimeError")
-                self.assertIn("a2a-private-guard guard", data["error"])
+                self.assertIn("opencac-private-guard guard", data["error"])
 
     def test_rejection_posts_callback(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
-            audit = AuditLog(workspace / ".a2a" / "audit.jsonl")
+            audit = AuditLog(workspace / ".opencac" / "audit.jsonl")
             callback_server = start_callback_server(18772)
             try:
                 runtime = FabricRuntime(workspace=workspace, audit=audit, host="127.0.0.1", port=8000)
@@ -67,7 +67,7 @@ class ServiceTests(BasePipelineTestCase):
     def test_http_service_distributed_async_run_endpoint(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
-            audit = AuditLog(workspace / ".a2a" / "audit.jsonl")
+            audit = AuditLog(workspace / ".opencac" / "audit.jsonl")
             thread = threading.Thread(
                 target=serve,
                 kwargs={"host": "127.0.0.1", "port": 18771, "workspace": workspace, "audit": audit},
@@ -97,7 +97,7 @@ class ServiceTests(BasePipelineTestCase):
     def test_http_service_run_endpoint(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
-            audit = AuditLog(workspace / ".a2a" / "audit.jsonl")
+            audit = AuditLog(workspace / ".opencac" / "audit.jsonl")
             thread = threading.Thread(
                 target=serve,
                 kwargs={"host": "127.0.0.1", "port": 18777, "workspace": workspace, "audit": audit},
@@ -117,7 +117,7 @@ class ServiceTests(BasePipelineTestCase):
     def test_http_service_distributed_run_endpoint(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
-            audit = AuditLog(workspace / ".a2a" / "audit.jsonl")
+            audit = AuditLog(workspace / ".opencac" / "audit.jsonl")
             thread = threading.Thread(
                 target=serve,
                 kwargs={"host": "127.0.0.1", "port": 18776, "workspace": workspace, "audit": audit},
@@ -140,7 +140,7 @@ class ServiceTests(BasePipelineTestCase):
     def test_http_service_agent_card_and_task_status(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
-            audit = AuditLog(workspace / ".a2a" / "audit.jsonl")
+            audit = AuditLog(workspace / ".opencac" / "audit.jsonl")
             thread = threading.Thread(
                 target=serve,
                 kwargs={"host": "127.0.0.1", "port": 18775, "workspace": workspace, "audit": audit},
@@ -175,7 +175,7 @@ class ServiceTests(BasePipelineTestCase):
     def test_private_mode_rejects_non_loopback_distributed_target(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
-            audit = AuditLog(workspace / ".a2a" / "audit.jsonl")
+            audit = AuditLog(workspace / ".opencac" / "audit.jsonl")
             runtime = FabricRuntime(workspace=workspace, audit=audit, host="100.67.207.51", port=8000)
             with self.assertRaises(ValueError):
                 runtime.run_distributed("must stay local", "private", InferenceConfig())
@@ -183,7 +183,7 @@ class ServiceTests(BasePipelineTestCase):
     def test_http_service_agent_endpoint(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
-            audit = AuditLog(workspace / ".a2a" / "audit.jsonl")
+            audit = AuditLog(workspace / ".opencac" / "audit.jsonl")
             thread = threading.Thread(
                 target=serve,
                 kwargs={"host": "127.0.0.1", "port": 18779, "workspace": workspace, "audit": audit},

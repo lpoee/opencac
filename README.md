@@ -84,7 +84,7 @@ docker run --rm -p 8000:8000 -v "$(pwd)/data:/data" opencac
 
 ### Private (local-only)
 
-All agent endpoints must be on loopback. Requires the `a2a-private-guard` script to be enabled. No network calls leave the machine.
+All agent endpoints must be on loopback. Requires the `opencac-private-guard` script to be enabled. No network calls leave the machine.
 
 ```bash
 export A2A_ANTIGRAVITY_URL=http://127.0.0.1:18101
@@ -197,7 +197,7 @@ The strategy is selected automatically based on available draft model candidates
 After a run, two things matter:
 
 - **`artifacts/<session-id>/`** -- `plan.json` (the execution plan) and `result.md` (the summary with routing info, strategy, and step results)
-- **`.a2a/audit.jsonl`** -- every event from the run, one JSON object per line
+- **`.opencac/audit.jsonl`** -- every event from the run, one JSON object per line
 
 ## Testing
 

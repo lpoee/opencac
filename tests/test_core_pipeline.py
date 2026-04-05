@@ -7,7 +7,7 @@ class CorePipelineTests(BasePipelineTestCase):
     def test_plan_rejects_shell_control_operators(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
-            audit = AuditLog(workspace / ".a2a" / "audit.jsonl")
+            audit = AuditLog(workspace / ".opencac" / "audit.jsonl")
             plan = {
                 "msg_id": "plan-shell-reject",
                 "timestamp": "2026-04-05T00:00:00+00:00",
@@ -23,7 +23,7 @@ class CorePipelineTests(BasePipelineTestCase):
                     ],
                 },
             }
-            from a2a_fabric.agents import CodexExecutor, RoutingConfig
+            from opencac.agents import CodexExecutor, RoutingConfig
 
             executor = CodexExecutor(RoutingConfig(mode="private"), InferenceConfig(), workspace, audit)
             assessment = executor.assess_plan(plan)
@@ -33,7 +33,7 @@ class CorePipelineTests(BasePipelineTestCase):
     def test_cloud_mode_falls_back_to_local_shards_when_cloud_tokens_are_missing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
-            audit = AuditLog(workspace / ".a2a" / "audit.jsonl")
+            audit = AuditLog(workspace / ".opencac" / "audit.jsonl")
             servers = []
             try:
                 antigravity_server, antigravity_handler = start_local_llm_server(18891, "antigravity")
@@ -54,7 +54,7 @@ class CorePipelineTests(BasePipelineTestCase):
                     "A2A_ANTIGRAVITY_URL": mapping["antigravity"],
                     "A2A_CLAUDE_CODE_URL": mapping["claude-code"],
                     "A2A_CODEX_URL": mapping["codex"],
-                }, clear=False), mock.patch("a2a_fabric.runtime._default_role_url", side_effect=lambda role: mapping[role]):
+                }, clear=False), mock.patch("opencac.runtime._default_role_url", side_effect=lambda role: mapping[role]):
                     result = run_pipeline(
                         prompt="cloud fallback run",
                         mode="cloud",
@@ -78,7 +78,7 @@ class CorePipelineTests(BasePipelineTestCase):
     def test_pipeline_writes_audit_and_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
-            audit = AuditLog(workspace / ".a2a" / "audit.jsonl")
+            audit = AuditLog(workspace / ".opencac" / "audit.jsonl")
             result = run_pipeline(
                 prompt="build a private-safe opencac execution chain",
                 mode="private",
@@ -118,7 +118,7 @@ class CorePipelineTests(BasePipelineTestCase):
             (workspace / "src").mkdir()
             (workspace / "docs" / "notes.md").write_text("speculative decoding keeps token throughput high\n", encoding="utf-8")
             (workspace / "src" / "worker.py").write_text("SPECULATIVE_MODE = 'enabled'\n", encoding="utf-8")
-            audit = AuditLog(workspace / ".a2a" / "audit.jsonl")
+            audit = AuditLog(workspace / ".opencac" / "audit.jsonl")
 
             result = run_pipeline(
                 prompt="speculative decoding",
@@ -138,7 +138,7 @@ class CorePipelineTests(BasePipelineTestCase):
     def test_private_pipeline_uses_local_llm_shards(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
-            audit = AuditLog(workspace / ".a2a" / "audit.jsonl")
+            audit = AuditLog(workspace / ".opencac" / "audit.jsonl")
             servers = []
             try:
                 antigravity_server, antigravity_handler = start_local_llm_server(18761, "antigravity")
@@ -175,7 +175,7 @@ class CorePipelineTests(BasePipelineTestCase):
     def test_private_pipeline_fails_when_local_llm_is_unreachable(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
-            audit = AuditLog(workspace / ".a2a" / "audit.jsonl")
+            audit = AuditLog(workspace / ".opencac" / "audit.jsonl")
             inference = InferenceConfig(
                 antigravity_url="http://127.0.0.1:18764",
                 claude_code_url="http://127.0.0.1:18765",
@@ -193,7 +193,7 @@ class CorePipelineTests(BasePipelineTestCase):
     def test_private_runtime_validation_is_audited(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
-            audit = AuditLog(workspace / ".a2a" / "audit.jsonl")
+            audit = AuditLog(workspace / ".opencac" / "audit.jsonl")
             result = run_pipeline(
                 prompt="validate private runtime",
                 mode="private",
@@ -206,18 +206,18 @@ class CorePipelineTests(BasePipelineTestCase):
             self.assertEqual(entry["details"]["role_urls"]["codex"], "http://127.0.0.1:18103")
 
     def test_private_runtime_requires_private_guard(self) -> None:
-        from a2a_fabric.agents import ensure_private_runtime
+        from opencac.agents import ensure_private_runtime
 
         inference = InferenceConfig()
-        with mock.patch("a2a_fabric.runtime.subprocess.run") as run_mock:
-            run_mock.return_value = subprocess.CompletedProcess(["a2a-private-guard", "status"], 0, stdout="disabled\n", stderr="")
+        with mock.patch("opencac.runtime.subprocess.run") as run_mock:
+            run_mock.return_value = subprocess.CompletedProcess(["opencac-private-guard", "status"], 0, stdout="disabled\n", stderr="")
             with self.assertRaises(RuntimeError):
                 ensure_private_runtime(inference)
 
     def test_run_step_executes_command_and_records_log(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
-            audit = AuditLog(workspace / ".a2a" / "audit.jsonl")
+            audit = AuditLog(workspace / ".opencac" / "audit.jsonl")
             plan = {
                 "msg_id": "plan-run",
                 "timestamp": "2026-04-05T00:00:00+00:00",
@@ -235,7 +235,7 @@ class CorePipelineTests(BasePipelineTestCase):
                     ],
                 },
             }
-            from a2a_fabric.agents import CodexExecutor, RoutingConfig
+            from opencac.agents import CodexExecutor, RoutingConfig
 
             executor = CodexExecutor(RoutingConfig(mode="private"), InferenceConfig(), workspace, audit)
             result = executor.execute(plan)
@@ -248,7 +248,7 @@ class CorePipelineTests(BasePipelineTestCase):
     def test_auto_mode_prefers_quality_and_falls_back_to_self_speculative(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
-            audit = AuditLog(workspace / ".a2a" / "audit.jsonl")
+            audit = AuditLog(workspace / ".opencac" / "audit.jsonl")
             inference = InferenceConfig(
                 engine="llama.cpp",
                 model="gpt-oss:20b",
@@ -268,7 +268,7 @@ class CorePipelineTests(BasePipelineTestCase):
     def test_llamacpp_speculative_command_is_persisted(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
-            audit = AuditLog(workspace / ".a2a" / "audit.jsonl")
+            audit = AuditLog(workspace / ".opencac" / "audit.jsonl")
             inference = InferenceConfig(
                 engine="llama.cpp",
                 model="gpt-oss:20b",
@@ -293,7 +293,7 @@ class CorePipelineTests(BasePipelineTestCase):
     def test_draft_model_switches_strategy(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
-            audit = AuditLog(workspace / ".a2a" / "audit.jsonl")
+            audit = AuditLog(workspace / ".opencac" / "audit.jsonl")
             inference = InferenceConfig(
                 engine="llama.cpp",
                 model="gpt-oss:20b",
@@ -316,11 +316,11 @@ class CorePipelineTests(BasePipelineTestCase):
         self.assertTrue(config.speculative)
 
     def test_resume_replays_from_logged_plan(self) -> None:
-        from a2a_fabric.agents import resume_pipeline
+        from opencac.agents import resume_pipeline
 
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
-            audit = AuditLog(workspace / ".a2a" / "audit.jsonl")
+            audit = AuditLog(workspace / ".opencac" / "audit.jsonl")
             first = run_pipeline(
                 prompt="resume capable session",
                 mode="cloud",
@@ -337,10 +337,10 @@ class CorePipelineTests(BasePipelineTestCase):
             self.assertEqual(resumed["status"], "success")
 
     def test_sidecar_rejects_non_protocol_text(self) -> None:
-        from a2a_fabric.agents import Sidecar
+        from opencac.agents import Sidecar
 
         with tempfile.TemporaryDirectory() as tmp:
-            audit = AuditLog(Path(tmp) / ".a2a" / "audit.jsonl")
+            audit = AuditLog(Path(tmp) / ".opencac" / "audit.jsonl")
             sidecar = Sidecar(audit)
             rejection = sidecar.reject(
                 "plain text that is not json",
@@ -354,7 +354,7 @@ class CorePipelineTests(BasePipelineTestCase):
 
     def test_audit_log_append_is_thread_safe(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            audit = AuditLog(Path(tmp) / ".a2a" / "audit.jsonl")
+            audit = AuditLog(Path(tmp) / ".opencac" / "audit.jsonl")
 
             def writer(start: int) -> None:
                 for offset in range(50):

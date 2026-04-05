@@ -38,7 +38,7 @@ classifiers = [
 ]
 
 [project.scripts]
-opencac = "a2a_fabric.cli:main"
+opencac = "opencac.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/lpoee/opencac"

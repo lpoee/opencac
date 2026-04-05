@@ -58,6 +58,8 @@ TEXT_FILE_EXTENSIONS = {
 }
 BLOCKED_COMMAND_TOKENS = ["rm -rf /", "shutdown", "reboot", "mkfs", ":(){:|:&};:"]
 BLOCKED_SHELL_TOKENS = ["|", "||", "&", "&&", ";", ">", ">>", "<", "<<", "$(", "`"]
+HTTP_TIMEOUT = 120
+LLM_TIMEOUT = 300
 
 
 CLOUD_TOKEN_ENV = {
@@ -79,7 +81,7 @@ def _cloud_token_present(role: str) -> bool:
 
 
 def _cloud_fallback_enabled() -> bool:
-    return os.getenv("A2A_CLOUD_FALLBACK_LOCAL", "1").strip().lower() not in {"0", "false", "off", "no"}
+    return os.getenv("A2A_CLOUD_FALLBACK_LOCAL", "0").strip().lower() not in {"0", "false", "off", "no"}
 
 
 def make_envelope(
@@ -175,7 +177,7 @@ def _post_callback(callback_url: str, payload: Dict[str, Any], mode: str) -> Dic
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with urlopen(request, timeout=10) as response:
+    with urlopen(request, timeout=HTTP_TIMEOUT) as response:
         return {
             "status_code": response.status,
             "body": response.read().decode("utf-8"),
@@ -238,7 +240,7 @@ def _completion_request(base_url: str, *, prompt: str, grammar: str) -> Dict[str
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with urlopen(request, timeout=30) as response:
+    with urlopen(request, timeout=LLM_TIMEOUT) as response:
         return json.loads(response.read().decode("utf-8"))
 
 
@@ -257,13 +259,13 @@ def _probe_local_llm(mode: str, base_url: str, role: str) -> Dict[str, Any]:
 
 
 def ensure_private_runtime(inference: "InferenceConfig") -> Dict[str, Any]:
-    guard_script = Path.home() / ".local" / "bin" / "a2a-private-guard"
+    guard_script = Path.home() / ".local" / "bin" / "opencac-private-guard"
     if not guard_script.exists():
         raise RuntimeError(f"private guard is missing: {guard_script}")
     proc = subprocess.run([str(guard_script), "status"], text=True, capture_output=True)
     status_line = proc.stdout.splitlines()[0].strip() if proc.stdout.strip() else "unknown"
     if proc.returncode != 0 or status_line != "enabled":
-        raise RuntimeError("private mode requires the a2a-private-guard guard to be enabled")
+        raise RuntimeError("private mode requires the opencac-private-guard guard to be enabled")
     role_urls = {}
     for role in ("antigravity", "claude-code", "codex"):
         role_url = inference.role_url(role, "private")

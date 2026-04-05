@@ -58,7 +58,7 @@ class Antigravity:
                 rel_path = rel_with_line.rsplit(":", 1)[0]
                 sources.append({"url": f"file://{self.workspace / rel_path}", "title": title})
             else:
-                sources.append({"url": "a2a://workspace/scan", "title": title})
+                sources.append({"url": "opencac://workspace/scan", "title": title})
         return sources
 
     def handle(self, instruction: Dict[str, Any]) -> Dict[str, Any]:

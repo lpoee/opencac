@@ -20,9 +20,9 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from a2a_fabric.agents import InferenceConfig, run_pipeline
-from a2a_fabric.audit import AuditLog
-from a2a_fabric.service import FabricRuntime, serve
+from opencac.agents import InferenceConfig, run_pipeline
+from opencac.audit import AuditLog
+from opencac.service import FabricRuntime, serve
 
 DEFAULT_TEST_ROLE_PORTS = {
     "antigravity": 18101,
@@ -121,7 +121,7 @@ class BasePipelineTestCase(unittest.TestCase):
         super().setUpClass()
         cls._default_role_servers = []
         cls._default_role_env_backup = {name: os.environ.get(name) for name in ROLE_URL_ENV.values()}
-        cls._guard_script = Path.home() / ".local" / "bin" / "a2a-private-guard"
+        cls._guard_script = Path.home() / ".local" / "bin" / "opencac-private-guard"
         cls._guard_created = not cls._guard_script.exists()
         if cls._guard_created:
             cls._guard_script.parent.mkdir(parents=True, exist_ok=True)
@@ -174,6 +174,6 @@ esac
         super().tearDownClass()
 
     def setUp(self) -> None:
-        guard = Path.home() / ".local" / "bin" / "a2a-private-guard"
+        guard = Path.home() / ".local" / "bin" / "opencac-private-guard"
         if guard.exists():
             subprocess.run([str(guard), "enable"], check=False, capture_output=True, text=True)
