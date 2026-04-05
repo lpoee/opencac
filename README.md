@@ -1,53 +1,64 @@
 # OpenCAC
 
-OpenCAC is a CLI and HTTP service for orchestrating a hybrid workflow across Claude Code, Antigravity, Codex, cloud APIs, and local LLMs.
+**Orchestrate Claude Code, Antigravity, and Codex as a single pipeline** -- across cloud APIs, local LLMs, or both.
 
-## Core Pain Points
+OpenCAC is a zero-dependency Python CLI and HTTP service that chains multiple AI coding agents into a structured research-plan-critique-execute workflow with built-in speculative decoding for local LLMs. Run the full pipeline on your own hardware at near-zero token cost, with schema validation on every hop and a complete audit trail -- or fall back to cloud APIs when you need them.
 
-- orchestration is hard
-- cloud APIs are expensive
-- local LLMs are still too weak to handle the full workflow on their own
+## Why
 
-## How It Works
+Cloud API tokens are expensive. A single complex coding task that chains research, planning, and execution across multiple agents can burn through dollars of tokens in minutes. Local LLMs are cheap to run but too weak on their own to handle a full multi-step workflow reliably.
 
-OpenCAC provides:
+OpenCAC bridges this gap: run local LLMs with speculative decoding for high throughput, wrap them in a structured pipeline with validation and critique at every step, and only fall back to cloud APIs when local inference isn't available. You get cloud-grade orchestration quality at local-inference cost.
 
-- a CLI and HTTP service
-- a protocol flow:
-  - `dispatcher -> antigravity -> claude-code -> codex`
-- `Sidecar` schema validation
-- `JSONL` audit logging
-- session resume
-- `private` / `cloud` / `hybrid` routing skeleton
-- Docker, packaging, README, and CI release surface
-- a local mock / local-endpoint-driven test harness
+Concretely, OpenCAC provides:
 
-It runs four roles:
+- **Local-first with speculative decoding** -- run the entire pipeline on local llama.cpp endpoints with n-gram or draft-model speculation, keeping token costs at zero while maintaining throughput
+- **A structured pipeline** with protocol validation between every agent hop -- no unvalidated payloads pass through, each layer critiques the one above it before work moves downstream
+- **Cloud / local / hybrid routing** -- use cloud APIs when available, fall back to local endpoints when they're not, or go fully local for air-gapped work
+- **A complete audit trail** -- every decision, every agent output, every execution result is logged as append-only JSONL
+- **Session resume** -- pick up where a failed or interrupted run left off without re-running completed steps
 
-- `user`
-- `researcher`
-- `planner`
-- `implementer`
+## Architecture
 
-Each layer critiques the layer above it before passing work downstream.
+```
+User
+ |
+ v
+Dispatcher ──> Antigravity (research) ──> Claude Code (plan) ──> Codex (execute)
+                    |                          |                       |
+                    v                          v                       v
+              Sidecar validates          Sidecar validates       Sidecar validates
+              every envelope             every envelope          every envelope
+                                                                      |
+                                                                      v
+                                                                 audit.jsonl
+                                                                 artifacts/
+```
 
-Supporting pieces:
+**Four roles, each with a specific job:**
 
-- `Sidecar` validates protocol envelopes and payloads
-- `audit.jsonl` records one atomic event per line
-- the HTTP service exposes runs, task status, audit access, and agent endpoints
+| Role       | Agent       | What it does                                                                   |
+| ---------- | ----------- | ------------------------------------------------------------------------------ |
+| Researcher | Antigravity | Scans local docs and source code, surfaces relevant context                    |
+| Planner    | Claude Code | Converts research into a dependency-ordered execution plan                     |
+| Critic     | Codex       | Reviews the plan for safety (blocked commands, missing steps) before execution |
+| Executor   | Codex       | Runs the approved plan, writes artifacts, logs step results                    |
+
+The **Sidecar** validates every message envelope against a strict schema -- allowed agents, message types, required payload fields, step actions, and verdict values. Invalid messages are rejected and logged before they reach any agent.
 
 ## Quick Start
 
-Install in a virtual environment:
+```bash
+git clone https://github.com/lpoee/opencac.git
+cd opencac
+python3 -m venv .venv && . .venv/bin/activate
+pip install .
+```
+
+Run a task:
 
 ```bash
-git clone https://github.com/lpoeeo/opencac.git
-cd opencac
-python3 -m venv .venv
-. .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install .
+opencac run "analyze this repository and suggest improvements" --mode private
 ```
 
 Start the interactive CLI:
@@ -56,195 +67,159 @@ Start the interactive CLI:
 opencac
 ```
 
-Run one task:
-
-```bash
-opencac run "analyze this repository and propose the next change" --mode private
-```
-
-Start the local HTTP service:
+Start the HTTP service:
 
 ```bash
 opencac serve --host 127.0.0.1 --port 8000
 ```
 
-Run through the HTTP service:
-
-```bash
-opencac run "execute through the HTTP service" --mode private --distributed --base-url http://127.0.0.1:8000
-```
-
-## Installation Options
-
-### Option 1: pip
-
-For most users:
-
-```bash
-git clone https://github.com/lpoeeo/opencac.git
-cd opencac
-python3 -m venv .venv
-. .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install .
-```
-
-### Option 2: Docker
-
-Build the image:
+### Docker
 
 ```bash
 docker build -t opencac .
-```
-
-Run the service:
-
-```bash
 docker run --rm -p 8000:8000 -v "$(pwd)/data:/data" opencac
 ```
 
-Run the CLI help in the container:
+## Routing Modes
 
-```bash
-docker run --rm opencac --help
-```
+### Private (local-only)
 
-## Model Setup
-
-OpenCAC supports three practical setups.
-
-### 1. Local-only
-
-Use this if you already have local inference endpoints.
+All agent endpoints must be on loopback. Requires the `a2a-private-guard` script to be enabled. No network calls leave the machine.
 
 ```bash
 export A2A_ANTIGRAVITY_URL=http://127.0.0.1:18101
 export A2A_CLAUDE_CODE_URL=http://127.0.0.1:18102
 export A2A_CODEX_URL=http://127.0.0.1:18103
-opencac run "start work" --mode private
+opencac run "task" --mode private
 ```
 
-Use this mode when:
+### Cloud
 
-- you want local-only execution
-- you do not want to rely on cloud APIs
-- you already run local model servers
-
-### 2. Cloud-only
-
-Use this if you do not have local models.
+Routes through cloud API tokens. No local model infrastructure required.
 
 ```bash
 export A2A_ANTIGRAVITY_TOKEN=your-token
 export A2A_CLAUDE_CODE_TOKEN=your-token
 export A2A_CODEX_TOKEN=your-token
-opencac run "start work" --mode cloud
+opencac run "task" --mode cloud
 ```
 
-Use this mode when:
+### Hybrid
 
-- you want the simplest onboarding path
-- you have cloud credentials
-- you do not want to maintain local model infrastructure
-
-### 3. Hybrid cloud with local fallback
-
-Use this if you want cloud-first behavior but do not want the whole run to fail when cloud credentials are unavailable.
+Cloud-first with automatic local fallback when tokens are missing or endpoints are unreachable.
 
 ```bash
-export A2A_ANTIGRAVITY_TOKEN=your-token
-export A2A_CLAUDE_CODE_TOKEN=your-token
-export A2A_CODEX_TOKEN=your-token
-export A2A_ANTIGRAVITY_URL=http://127.0.0.1:18101
-export A2A_CLAUDE_CODE_URL=http://127.0.0.1:18102
-export A2A_CODEX_URL=http://127.0.0.1:18103
+# Set both cloud tokens and local endpoints
 export A2A_CLOUD_FALLBACK_LOCAL=1
-opencac run "start work" --mode cloud
+opencac run "task" --mode cloud
 ```
 
-Use this mode when:
+## CLI Reference
 
-- you want better resilience
-- you have both cloud access and local endpoints
-- you want cloud reasoning with local backup paths
-
-## If You Do Not Have Local Models
-
-That is fine. Use cloud mode.
-
-```bash
-export A2A_ANTIGRAVITY_TOKEN=your-token
-export A2A_CLAUDE_CODE_TOKEN=your-token
-export A2A_CODEX_TOKEN=your-token
-opencac run "start work" --mode cloud
+```
+opencac                                     # interactive mode
+opencac run "prompt" --mode private         # single task
+opencac run "prompt" --distributed          # run through HTTP service
+opencac run "prompt" --distributed --async-run  # async distributed run
+opencac serve --host 127.0.0.1 --port 8000  # start HTTP service
+opencac audit --last 20                     # show recent audit entries
+opencac resume <session-id>                 # resume interrupted session
+opencac discover --base-url http://...      # fetch agent card
+opencac sidecar-check '{"msg_id":...}'      # validate a message envelope
 ```
 
-Do not use `--mode private` unless local model endpoints are available.
+### Interactive Commands
 
-If you have neither local endpoints nor cloud tokens, OpenCAC will fail at runtime. The current implementation requires at least one working execution path.
-
-## Files You Will Care About
-
-After a run, the two most important outputs are:
-
-- `artifacts/<session-id>/`
-- `.a2a/audit.jsonl`
-
-Useful commands:
-
-```bash
-opencac audit --last 20
+```
+/mode private|cloud       set routing mode
+/distributed on|off       toggle distributed execution
+/base-url <url>           set HTTP service URL
+/workspace <path>         set artifact root
+/json on|off              toggle raw JSON output
+/help                     show commands
+/exit                     quit
 ```
 
-```bash
-opencac resume <session-id>
-```
+The interactive CLI auto-detects questions vs tasks. Questions (`who`, `what`, `how`, `?`, Chinese question words) get a direct answer. Tasks run the full pipeline.
 
 ## HTTP API
 
-Start the service:
+| Method | Path                             | Description                          |
+| ------ | -------------------------------- | ------------------------------------ |
+| `GET`  | `/.well-known/agent.json`        | Agent discovery card                 |
+| `GET`  | `/health`                        | Service health check                 |
+| `GET`  | `/tasks/<session_id>`            | Task status and step results         |
+| `GET`  | `/audit?session_id=<id>&last=20` | Query audit log                      |
+| `POST` | `/run`                           | Run a task synchronously             |
+| `POST` | `/run?distributed=1`             | Run through the distributed pipeline |
+| `POST` | `/run?distributed=1&async=1`     | Start an async distributed run       |
+| `POST` | `/agents/<agent>/message/send`   | Send a protocol message to an agent  |
+
+### Example: Run a task via HTTP
 
 ```bash
-opencac serve --host 127.0.0.1 --port 8000
+curl -X POST http://127.0.0.1:8000/run \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "analyze the test suite", "mode": "private"}'
 ```
 
-Main endpoints:
+### Example: Poll task status
 
-- `GET /.well-known/agent.json`
-- `GET /tasks/<session_id>`
-- `GET /audit?session_id=<id>&last=20`
-- `POST /run`
-- `POST /run?distributed=1`
-- `POST /agents/<agent>/message/send`
+```bash
+curl http://127.0.0.1:8000/tasks/<session-id>
+```
+
+## Speculative Decoding
+
+This is the core of how OpenCAC keeps costs down without sacrificing quality. Instead of sending every token through an expensive cloud API, the pipeline runs on local llama.cpp servers with speculative decoding enabled -- generating tokens 2-4x faster than naive autoregressive inference on the same hardware.
+
+The quality of individual local outputs doesn't need to be perfect. The pipeline's critique layer (Codex reviews every plan before execution) catches bad outputs before they cause damage, so you get the cost savings of local inference with the safety net of structured validation.
+
+OpenCAC generates ready-to-use `llama-server` launch commands with the right speculation flags. This is built into the pipeline config, not a separate tool.
+
+```bash
+opencac run "task" --mode private \
+  --spec-type ngram-simple \
+  --draft-max 64 \
+  --draft-min 16 \
+  --spec-ngram-size-n 12
+```
+
+Two strategies are supported:
+
+- **Self-speculative** (default): n-gram cache on the main model, no draft model needed -- zero additional VRAM cost
+- **Draft-model**: pair a small draft model with the main model for higher acceptance rates (`--draft-model gpt-oss:small-draft`)
+
+The strategy is selected automatically based on available draft model candidates, or forced via `--speculative-mode`. Either way, the generated `llama-server` command and strategy choice are persisted in the session artifacts for reproducibility.
+
+## Output
+
+After a run, two things matter:
+
+- **`artifacts/<session-id>/`** -- `plan.json` (the execution plan) and `result.md` (the summary with routing info, strategy, and step results)
+- **`.a2a/audit.jsonl`** -- every event from the run, one JSON object per line
 
 ## Testing
-
-Run the test suite:
 
 ```bash
 . .venv/bin/activate
 PYTHONPATH=src pytest -q
 ```
 
-Current baseline:
-
-- `32` tests passing
-
-## Contributing
-
-Read [CONTRIBUTING.md](CONTRIBUTING.md).
-
-Short version:
-
-1. Create a branch.
-2. Run `PYTHONPATH=src pytest -q`.
-3. Make a focused change.
-4. Add or update tests.
-5. Open a pull request with a clear explanation.
+32 tests covering the full pipeline, HTTP endpoints (sync, distributed, async), CLI interactive mode, sidecar validation, session resume, callback posting, and local LLM probe mocking. All tests run against real (mocked) HTTP servers -- no `unittest.mock.patch` on network calls.
 
 ## Security
 
-See [SECURITY.md](SECURITY.md).
+- **Private mode** enforces loopback-only on all endpoints, callback URLs, and distributed targets
+- **Sidecar validation** rejects unknown agents, message types, and malformed payloads before they reach any handler
+- **Blocked command list** prevents `rm -rf /`, `shutdown`, `reboot`, `mkfs`, and fork bombs from executing
+- **Private guard** script must be explicitly enabled before private mode will run
+
+See [SECURITY.md](SECURITY.md) for reporting vulnerabilities.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Short version: branch, test, PR.
 
 ## License
 
