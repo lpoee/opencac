@@ -76,8 +76,8 @@ class Antigravity:
         if self.routing.mode == "cloud":
             findings = [
                 {
-                    "title": "Cloud route placeholder",
-                    "content": "Cloud mode is selected; research remains deterministic while preserving the configured cloud routing metadata.",
+                    "title": "Cloud routing metadata",
+                    "content": "Cloud mode is selected; this report preserves the configured cloud routing metadata while local workspace evidence is still scanned deterministically.",
                     "confidence": "medium",
                     "source_refs": [0],
                 },

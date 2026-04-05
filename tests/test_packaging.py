@@ -18,10 +18,13 @@ def test_public_repo_files_exist() -> None:
         ROOT / ".gitignore",
         ROOT / "Dockerfile",
         ROOT / ".dockerignore",
+        ROOT / "opencac",
+        ROOT / "scripts" / "opencac.sh",
         ROOT / ".github" / "workflows" / "ci.yml",
     ]
     for path in required:
         assert path.exists(), f"missing required public repo file: {path}"
+    assert not (ROOT / "a2a").exists(), "legacy a2a launcher should not exist"
 
 
 def test_pyproject_exposes_publish_metadata() -> None:
@@ -29,7 +32,15 @@ def test_pyproject_exposes_publish_metadata() -> None:
     project = data["project"]
     assert project["name"] == "opencac"
     assert project["readme"] == "README.md"
-    assert project["license"]["file"] == "LICENSE"
+    assert project["license"] == "MIT"
     assert "Homepage" in project["urls"]
     assert "Repository" in project["urls"]
     assert "Issues" in project["urls"]
+    assert data["project"]["scripts"]["opencac"] == "opencac.cli:main"
+
+
+def test_gitignore_covers_runtime_artifacts() -> None:
+    content = (ROOT / ".gitignore").read_text(encoding="utf-8")
+    assert ".opencac/" in content
+    assert "dist/" in content
+    assert "build/" in content
