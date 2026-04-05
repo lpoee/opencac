@@ -1,52 +1,69 @@
 # OpenCAC
 
-**Orchestrate Claude Code, Antigravity, and Codex as a single pipeline** -- across cloud APIs, local LLMs, or both.
+**Turn Claude Code, Antigravity, and Codex into one automated pipeline** -- with protocol validation, audit logging, and flexible routing across cloud APIs, local LLMs, or both.
 
-OpenCAC is a zero-dependency Python CLI and HTTP service that chains multiple AI coding agents into a structured research-plan-critique-execute workflow. Every hop is schema-validated, every action is audit-logged, and the pipeline routes flexibly across cloud APIs, local LLMs, or both.
+## The Problem
 
-## Why
+There is no standard orchestration layer for AI coding agents. Today you use Claude Code, Codex, and Gemini/Antigravity as separate tools, manually copying context between them. There is no validation between steps, no audit trail, and no way to resume when something fails.
 
-Using multiple AI coding agents today means copying context between tools by hand, hoping each agent's output is safe to feed into the next, and having no record of what happened when something breaks.
+On top of that:
 
-OpenCAC solves this with a structured orchestration pipeline: each agent has a defined role (research, plan, critique, execute), every message is validated by a protocol sidecar before it reaches the next agent, and every decision is recorded in an append-only audit log.
+- **Cloud API tokens are expensive.** A complex multi-agent task that chains research, planning, and execution burns through tokens fast.
+- **Local LLMs are cheap but weak on their own.** A single local model can't reliably handle a full multi-step coding workflow end to end.
 
-When cloud API costs matter, the same pipeline can run on local llama.cpp endpoints with speculative decoding -- getting 2-4x faster inference on the same hardware. The pipeline's built-in critique layer catches bad local outputs before they cause damage, so you save tokens without giving up safety. But cloud mode works just as well when you have the tokens and want the strongest models.
+OpenCAC solves both problems. It wraps multiple agents into a structured pipeline where each layer critiques the one above it before passing work downstream. When running locally, speculative decoding keeps inference fast, and the pipeline's built-in critique layer catches low-quality outputs before they cause damage -- so you save tokens without giving up safety. Cloud mode works just as well when you have the budget and want the strongest models.
 
-OpenCAC provides:
+## What It Does
 
-- **A structured pipeline** with protocol validation between every agent hop -- no unvalidated payloads pass through, each layer critiques the one above it before work moves downstream
-- **Cloud / local / hybrid routing** -- use cloud APIs, local llama.cpp endpoints, or both with automatic fallback
-- **Speculative decoding** -- when running locally, n-gram or draft-model speculation keeps throughput high while the critique layer maintains output quality
-- **A complete audit trail** -- every decision, every agent output, every execution result is logged as append-only JSONL
-- **Session resume** -- pick up where a failed or interrupted run left off without re-running completed steps
-
-## Architecture
+### 1. Four-role pipeline
 
 ```
-User
- |
- v
-Dispatcher ──> Antigravity (research) ──> Claude Code (plan) ──> Codex (execute)
-                    |                          |                       |
-                    v                          v                       v
-              Sidecar validates          Sidecar validates       Sidecar validates
-              every envelope             every envelope          every envelope
-                                                                      |
-                                                                      v
-                                                                 audit.jsonl
-                                                                 artifacts/
+dispatcher → antigravity (research) → claude-code (plan) → codex (execute)
 ```
 
-**Four roles, each with a specific job:**
+Every layer produces a structured protocol envelope. The downstream agent critiques and validates the upstream output before acting on it. Codex runs `assess_plan` before execution -- dangerous commands get rejected, not blindly run.
 
-| Role       | Agent       | What it does                                                                   |
-| ---------- | ----------- | ------------------------------------------------------------------------------ |
-| Researcher | Antigravity | Scans local docs and source code, surfaces relevant context                    |
-| Planner    | Claude Code | Converts research into a dependency-ordered execution plan                     |
-| Critic     | Codex       | Reviews the plan for safety (blocked commands, missing steps) before execution |
-| Executor   | Codex       | Runs the approved plan, writes artifacts, logs step results                    |
+### 2. Three routing modes
 
-The **Sidecar** validates every message envelope against a strict schema -- allowed agents, message types, required payload fields, step actions, and verdict values. Invalid messages are rejected and logged before they reach any agent.
+| Mode        | When to use                                                                                                         |
+| ----------- | ------------------------------------------------------------------------------------------------------------------- |
+| **private** | All traffic stays on loopback. Private guard script must be enabled. For sensitive code or air-gapped environments. |
+| **cloud**   | Routes through cloud API tokens. No local infrastructure needed.                                                    |
+| **hybrid**  | Cloud-first, automatic fallback to local LLM endpoints when tokens are missing.                                     |
+
+### 3. Local LLM with speculative decoding
+
+Each pipeline role can point to its own llama.cpp server endpoint. OpenCAC generates ready-to-use `llama-server` launch commands with the right speculation flags (n-gram cache or draft model). Before the pipeline starts, a probe verifies each endpoint is alive using constrained grammar -- no silent failures.
+
+The critique layer is what makes local LLMs viable for the full pipeline: individual outputs don't need to be perfect because bad plans get caught and rejected before execution.
+
+### 4. Sidecar protocol validation
+
+Every hop between agents passes through the Sidecar, which validates:
+
+- Agent whitelist (only known agents can send/receive)
+- Message type whitelist (instruction, research_report, plan, critique, exec_result, etc.)
+- Required payload fields per message type
+- Blocked command list (`rm -rf /`, `shutdown`, `mkfs`, fork bomb)
+- Private mode: loopback-only enforcement on all URLs including callbacks
+
+### 5. JSONL audit trail
+
+One JSON line per action -- timestamped, tagged with session ID and event kind. Filter by session, query the last N entries, and resume interrupted sessions by replaying from the audit log (completed steps are skipped automatically).
+
+### 6. CLI + HTTP, sync + async
+
+- **CLI**: `opencac run "task"`, `opencac audit`, `opencac resume <session-id>`, interactive REPL
+- **HTTP**: `POST /run`, `GET /tasks/<id>`, per-agent message endpoints, agent discovery card at `/.well-known/agent.json`
+- **Distributed mode**: CLI routes through the HTTP service. Supports both synchronous and async execution with status polling.
+
+### 7. Smart question routing in interactive mode
+
+The interactive CLI detects whether input is a question or a task:
+
+- Questions (`?`, `who/what/how`, Chinese question words) go straight to a QA path -- no pipeline overhead
+- Tasks run the full research-plan-critique-execute pipeline
+- Questions containing evidence keywords (`docs`, `code`, `error`, `test`) trigger a research step before answering
 
 ## Quick Start
 
