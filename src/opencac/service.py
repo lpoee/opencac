@@ -16,6 +16,10 @@ from .audit import AuditLog
 from .runtime import HTTP_TIMEOUT
 
 
+class ReusableThreadingHTTPServer(ThreadingHTTPServer):
+    allow_reuse_address = True
+
+
 class FabricRuntime:
     def __init__(self, *, workspace: Path, audit: AuditLog, host: str = "127.0.0.1", port: int = 8000):
         self.workspace = workspace
@@ -328,7 +332,7 @@ def make_handler(runtime: FabricRuntime):
 
 def serve(*, host: str, port: int, workspace: Path, audit: AuditLog) -> None:
     runtime = FabricRuntime(workspace=workspace, audit=audit, host=host, port=port)
-    server = ThreadingHTTPServer((host, port), make_handler(runtime))
+    server = ReusableThreadingHTTPServer((host, port), make_handler(runtime))
     try:
         server.serve_forever()
     finally:

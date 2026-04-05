@@ -220,7 +220,7 @@ class CorePipelineTests(BasePipelineTestCase):
             self.assertEqual(result["status"], "success")
             entry = next(entry for entry in audit.read(session_id=result["session_id"], last=50) if entry["kind"] == "private_runtime_validated")
             self.assertEqual(entry["details"]["private_guard"], "enabled")
-            self.assertEqual(entry["details"]["role_urls"]["codex"], "http://127.0.0.1:18103")
+            self.assertEqual(entry["details"]["role_urls"]["codex"], os.environ["A2A_CODEX_URL"])
 
     def test_private_runtime_requires_private_guard(self) -> None:
         from opencac.agents import ensure_private_runtime

@@ -25,9 +25,9 @@ from opencac.audit import AuditLog
 from opencac.service import FabricRuntime, serve
 
 DEFAULT_TEST_ROLE_PORTS = {
-    "antigravity": 18101,
-    "claude-code": 18102,
-    "codex": 18103,
+    "antigravity": 0,
+    "claude-code": 0,
+    "codex": 0,
 }
 
 ROLE_URL_ENV = {
@@ -35,6 +35,10 @@ ROLE_URL_ENV = {
     "claude-code": "A2A_CLAUDE_CODE_URL",
     "codex": "A2A_CODEX_URL",
 }
+
+
+class ReusableThreadingHTTPServer(ThreadingHTTPServer):
+    allow_reuse_address = True
 
 
 def wait_for_port(host: str, port: int, timeout: float = 5.0) -> None:
@@ -71,10 +75,10 @@ class CallbackRecorder(BaseHTTPRequestHandler):
 def start_callback_server(port: int) -> ThreadingHTTPServer:
     CallbackRecorder.records = []
     CallbackRecorder.event = threading.Event()
-    server = ThreadingHTTPServer(("127.0.0.1", port), CallbackRecorder)
+    server = ReusableThreadingHTTPServer(("127.0.0.1", port), CallbackRecorder)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
-    wait_for_port("127.0.0.1", port)
+    wait_for_port("127.0.0.1", server.server_address[1])
     return server
 
 
@@ -106,10 +110,10 @@ def make_local_llm_handler(role: str):
 def start_local_llm_server(port: int, role: str):
     handler = make_local_llm_handler(role)
     handler.requests = []
-    server = ThreadingHTTPServer(("127.0.0.1", port), handler)
+    server = ReusableThreadingHTTPServer(("127.0.0.1", port), handler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
-    wait_for_port("127.0.0.1", port)
+    wait_for_port("127.0.0.1", server.server_address[1])
     return server, handler
 
 
@@ -157,7 +161,7 @@ esac
         for role, port in DEFAULT_TEST_ROLE_PORTS.items():
             server, _handler = start_local_llm_server(port, role)
             cls._default_role_servers.append(server)
-            os.environ[ROLE_URL_ENV[role]] = f"http://127.0.0.1:{port}"
+            os.environ[ROLE_URL_ENV[role]] = f"http://127.0.0.1:{server.server_address[1]}"
 
     @classmethod
     def tearDownClass(cls) -> None:
