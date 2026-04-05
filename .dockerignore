@@ -1,0 +1,14 @@
+.git
+.github
+.a2a
+.pytest_cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.venv
+venv
+dist
+build
+artifacts
+tests

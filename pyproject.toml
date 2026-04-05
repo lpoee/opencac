@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "opencac"
+version = "0.1.0"
+description = "OpenCAC: Claude Code, Antigravity, and Codex working together across cloud APIs and local models."
+requires-python = ">=3.9"
+authors = [{ name = "Codex" }]
+readme = "README.md"
+license = { file = "LICENSE" }
+keywords = ["opencac", "agent", "cli", "jsonl", "workflow"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+[project.scripts]
+opencac = "a2a_fabric.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/lpoeeo/opencac"
+Repository = "https://github.com/lpoeeo/opencac"
+Issues = "https://github.com/lpoeeo/opencac/issues"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
