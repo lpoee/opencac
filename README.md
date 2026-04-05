@@ -7,13 +7,11 @@ pip install .
 opencac run "refactor the auth module" --mode private
 ```
 
-## The problem
+## Why
 
-You're using Claude Code, Codex, and Antigravity as three separate tools. Context gets copy-pasted between them. Nothing validates what one agent hands to the next. When something breaks, there's no log to trace what happened.
+No orchestration layer exists for multi-agent AI coding. You copy-paste between Claude Code, Codex, and Antigravity with no validation and no audit trail. Cloud tokens are expensive. Local LLMs are cheap but too weak to handle the full workflow alone.
 
-Meanwhile: cloud API tokens are expensive when you're chaining research + planning + execution across three models. And local LLMs are cheap to run but can't reliably handle the full workflow alone -- they're fine for parts of it, not all of it.
-
-OpenCAC turns them into one pipeline with a shared protocol. Each stage critiques the one before it. The whole thing runs on cloud, local llama.cpp with speculative decoding, or both -- and every action gets logged.
+OpenCAC chains them into one pipeline where each stage critiques the one before it. Runs on cloud, local llama.cpp with speculative decoding, or both.
 
 ## How it works
 
@@ -25,18 +23,18 @@ dispatcher → antigravity (research) → claude-code (plan) → codex (critique
                           audit.jsonl records every event
 ```
 
-Each agent produces a structured protocol envelope. The next agent validates it and pushes back if something looks wrong. Codex runs `assess_plan` before touching anything -- dangerous commands get rejected, not executed.
+Structured envelopes between every hop. Codex runs `assess_plan` before executing anything -- dangerous commands get rejected, not run.
 
 ## Highlights
 
-- **One pipeline, four roles** -- research → plan → critique → execute. Each layer produces a structured envelope. The downstream agent critiques the upstream output before acting on it.
-- **Sidecar protocol validation** -- every hop passes through a sidecar that checks agent whitelist, message type whitelist, required payload fields per message type, and a blocked command list. Private mode enforces loopback-only on everything including callbacks.
-- **Cloud, local, or both** -- route through API tokens, local llama.cpp endpoints, or hybrid with automatic fallback when tokens are missing.
-- **Speculative decoding built in** -- generates `llama-server` commands with n-gram / draft-model flags. The critique layer catches bad local outputs before they hit execution, so local quality issues don't snowball into broken runs.
-- **Endpoint probing** -- before the pipeline starts, each local LLM endpoint is verified alive using a constrained-grammar probe. No silent failures mid-run.
-- **Full audit trail** -- append-only JSONL, one line per event, timestamped with session ID. Filter by session, query last N entries, or resume a crashed session -- completed steps get skipped automatically.
-- **CLI + HTTP + distributed** -- interactive REPL with smart question detection, one-shot `opencac run`, HTTP service with `POST /run` and per-agent message endpoints, async distributed execution with status polling.
-- **Zero dependencies** -- stdlib only, single `pip install`
+- **One pipeline, four roles** -- research → plan → critique → execute, each layer critiques the one above
+- **Sidecar validation** -- agent whitelist, message type whitelist, required payload fields, blocked commands, loopback-only in private mode
+- **Cloud, local, or both** -- API tokens, local llama.cpp endpoints, or hybrid with automatic fallback
+- **Speculative decoding** -- generates `llama-server` commands with n-gram / draft-model flags; critique layer catches bad local outputs before execution
+- **Endpoint probing** -- constrained-grammar probe verifies each LLM endpoint before the pipeline starts
+- **Audit trail** -- append-only JSONL, filter by session, resume crashed runs with completed steps auto-skipped
+- **CLI + HTTP + distributed** -- REPL with smart question detection, `POST /run`, async execution with polling
+- **Zero dependencies** -- stdlib only
 
 ## Quick start
 
