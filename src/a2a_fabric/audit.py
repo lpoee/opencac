@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -17,11 +18,13 @@ class AuditLog:
 
     def __post_init__(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._write_lock = threading.Lock()
 
     def append(self, event: Dict[str, Any]) -> Dict[str, Any]:
         enriched = {"ts": utc_now(), **event}
-        with self.path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(enriched, ensure_ascii=False) + "\n")
+        with self._write_lock:
+            with self.path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(enriched, ensure_ascii=False) + "\n")
         return enriched
 
     def read(self, session_id: Optional[str] = None, last: int = 20) -> List[Dict[str, Any]]:

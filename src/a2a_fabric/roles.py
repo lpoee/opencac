@@ -12,6 +12,7 @@ from .runtime import (
     InferenceConfig,
     RoutingConfig,
     _contains_blocked_token,
+    _parse_command,
     _post_callback,
     _probe_local_llm,
     _safe_rel_path,
@@ -261,6 +262,18 @@ class CodexExecutor:
                         "description": f"blocked command in step: {command}",
                     }
                 )
+            if command:
+                try:
+                    _parse_command(command)
+                except ValueError as exc:
+                    verdict = "reject"
+                    issues.append(
+                        {
+                            "severity": "critical",
+                            "step_id": step.get("id"),
+                            "description": str(exc),
+                        }
+                    )
         role_url = self.inference.role_url("codex", self.routing.mode)
         backend_probe = _probe_local_llm(self.routing.mode, role_url, "codex") if role_url else None
         assessment = {
@@ -324,10 +337,10 @@ class CodexExecutor:
         logs_dir = session_dir / "logs"
         logs_dir.mkdir(parents=True, exist_ok=True)
         log_path = logs_dir / f"step-{step_id}.log"
+        argv = _parse_command(command)
         proc = subprocess.run(
-            command,
+            argv,
             cwd=self.workspace,
-            shell=True,
             text=True,
             capture_output=True,
         )

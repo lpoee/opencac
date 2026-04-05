@@ -4,6 +4,32 @@ from .test_support import *
 
 
 class CorePipelineTests(BasePipelineTestCase):
+    def test_plan_rejects_shell_control_operators(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            audit = AuditLog(workspace / ".a2a" / "audit.jsonl")
+            plan = {
+                "msg_id": "plan-shell-reject",
+                "timestamp": "2026-04-05T00:00:00+00:00",
+                "from_agent": "claude-code",
+                "to_agent": "codex",
+                "msg_type": "plan",
+                "session_id": "shell-reject",
+                "payload": {
+                    "goal": "reject shell chaining",
+                    "context": "unsafe shell operator",
+                    "steps": [
+                        {"id": 1, "action": "run", "description": "unsafe", "command": "echo ok && whoami"},
+                    ],
+                },
+            }
+            from a2a_fabric.agents import CodexExecutor, RoutingConfig
+
+            executor = CodexExecutor(RoutingConfig(mode="private"), InferenceConfig(), workspace, audit)
+            assessment = executor.assess_plan(plan)
+            self.assertEqual(assessment["verdict"], "reject")
+            self.assertTrue(any("shell control operators" in issue["description"] for issue in assessment["issues"]))
+
     def test_cloud_mode_falls_back_to_local_shards_when_cloud_tokens_are_missing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
@@ -325,3 +351,21 @@ class CorePipelineTests(BasePipelineTestCase):
             )
             self.assertEqual(rejection["status_code"], 400)
             self.assertEqual(audit.read(session_id="bad-input", last=1)[0]["kind"], "sidecar_reject")
+
+    def test_audit_log_append_is_thread_safe(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            audit = AuditLog(Path(tmp) / ".a2a" / "audit.jsonl")
+
+            def writer(start: int) -> None:
+                for offset in range(50):
+                    audit.append({"kind": "thread-write", "session_id": "thread-safe", "seq": start + offset})
+
+            threads = [threading.Thread(target=writer, args=(index * 50,)) for index in range(4)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+
+            entries = audit.read(session_id="thread-safe", last=500)
+            self.assertEqual(len(entries), 200)
+            self.assertEqual({entry["seq"] for entry in entries}, set(range(200)))

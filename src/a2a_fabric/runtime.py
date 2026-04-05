@@ -3,6 +3,7 @@ from __future__ import annotations
 import ipaddress
 import json
 import os
+import shlex
 import subprocess
 import uuid
 from dataclasses import dataclass
@@ -56,6 +57,7 @@ TEXT_FILE_EXTENSIONS = {
     ".yml",
 }
 BLOCKED_COMMAND_TOKENS = ["rm -rf /", "shutdown", "reboot", "mkfs", ":(){:|:&};:"]
+BLOCKED_SHELL_TOKENS = ["|", "||", "&", "&&", ";", ">", ">>", "<", "<<", "$(", "`"]
 
 
 CLOUD_TOKEN_ENV = {
@@ -136,6 +138,21 @@ def _workspace_test_command(workspace: Path) -> Optional[str]:
 def _contains_blocked_token(command: str) -> bool:
     lowered = command.lower()
     return any(token in lowered for token in BLOCKED_COMMAND_TOKENS)
+
+
+def _parse_command(command: str) -> List[str]:
+    stripped = command.strip()
+    if not stripped:
+        raise ValueError("empty command is not allowed")
+    try:
+        argv = shlex.split(stripped)
+    except ValueError as exc:
+        raise ValueError(f"invalid command syntax: {command}") from exc
+    if not argv:
+        raise ValueError("empty command is not allowed")
+    if any(arg in BLOCKED_SHELL_TOKENS for arg in argv):
+        raise ValueError(f"shell control operators are not allowed in commands: {command}")
+    return argv
 
 
 def _loopback_only(url: str) -> bool:
