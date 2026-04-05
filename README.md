@@ -1,6 +1,6 @@
 # OpenCAC
 
-**One pipeline for Claude Code, Codex, and Antigravity — validated handoffs, audit logging, and speculative decoding for local LLMs.**
+**Multi-agent orchestration for AI coding tools. Wires Claude Code, Antigravity, and Codex into one pipeline with validated handoffs, audit logging, and speculative decoding for local LLMs.**
 
 ```bash
 pip install .
