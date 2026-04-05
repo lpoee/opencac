@@ -13,56 +13,44 @@ pip install .
 opencac run "refactor the auth module" --mode private
 ```
 
-```
-- Added bold tagline under the # OpenCAC heading
-- New "Why" section — three pain points as concise bullet points with bridge sentence
-- Features converted from code block to proper markdown with ### subsections
-```
-
 ## Features
 
-### Four-Role Pipeline
+```
+1. FOUR-ROLE PIPELINE
+   dispatcher → antigravity (research) → claude-code (plan) → codex (execute)
+   - Structured envelopes at every hop; downstream critiques upstream before acting
+   - Codex runs assess_plan — dangerous commands rejected, not blindly run
 
-`dispatcher` → `antigravity` (research) → `claude-code` (plan) → `codex` (execute)
+2. ROUTING MODES
+   private   Loopback only. Private guard required. For sensitive / air-gapped work.
+   cloud     Cloud API tokens. No local infra needed.
+   hybrid    Cloud first, falls back to local LLM when tokens are missing.
 
-- Structured envelopes at every hop; downstream critiques upstream before acting
-- Codex runs `assess_plan` — dangerous commands are rejected, not blindly executed
+3. LOCAL LLM SUPPORT
+   - Each role points to its own llama.cpp server endpoint
+   - Built-in spec decoding config (n-gram / draft-model) → generates llama-server commands
+   - Probe: constrained-grammar check verifies each endpoint before pipeline starts
 
-### Routing Modes
+4. SIDECAR VALIDATION
+   - Schema check on every hop — agent whitelist, message-type whitelist, payload fields
+   - Blocked commands: rm -rf /, shutdown, mkfs, fork bomb
+   - Private mode: loopback-only on all URLs including callbacks
 
-- **Private** — loopback only, private guard required; for sensitive or air-gapped work
-- **Cloud** — uses cloud API tokens, no local infra needed
-- **Hybrid** — cloud-first, falls back to local LLM when tokens are missing
+5. JSONL AUDIT LOG
+   - One JSON line per action — timestamp, session_id, kind
+   - Filter by session, query last N entries
+   - Session resume: rebuild plan from log, skip completed steps
 
-### Local LLM Support
+6. CLI + HTTP
+   CLI          opencac run, opencac audit, opencac resume, interactive REPL
+   HTTP         POST /run, GET /tasks/<id>, per-agent endpoints, /.well-known/agent.json
+   Distributed  CLI routes through HTTP service, sync and async
 
-- Each role points to its own `llama.cpp` server endpoint
-- Built-in speculative decoding config (n-gram / draft-model) generates `llama-server` commands automatically
-- Probe: constrained-grammar check verifies each endpoint before the pipeline starts
-
-### Sidecar Validation
-
-- Schema check on every hop — agent whitelist, message-type whitelist, payload fields
-- Blocked commands: `rm -rf /`, `shutdown`, `mkfs`, fork bomb
-- Private mode enforces loopback-only on all URLs including callbacks
-
-### JSONL Audit Log
-
-- One JSON line per action — timestamp, session ID, kind
-- Filter by session or query last N entries
-- Session resume: rebuild plan from log, skip completed steps
-
-### CLI + HTTP
-
-- **CLI** — `opencac run`, `opencac audit`, `opencac resume`, interactive REPL
-- **HTTP** — `POST /run`, `GET /tasks/<id>`, per-agent endpoints, `/.well-known/agent.json`
-- **Distributed** — CLI routes through the HTTP service, sync and async
-
-### Smart Question Routing
-
-- Ends with `?` or starts with who/what/how/why → QA path, skips the full pipeline
-- Task input → full pipeline, outputs artifacts
-- Mentions docs/code/error/test → research step first
+7. SMART QUESTION ROUTING
+   - Ends with ? or starts with who/what/how/why → QA path, skips pipeline
+   - Task input → full pipeline, outputs artifacts
+   - Mentions docs/code/error/test → research step first
+```
 
 ## Quick Start
 
