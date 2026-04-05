@@ -9,11 +9,9 @@ opencac run "refactor the auth module" --mode private
 
 ## Why
 
-- **No orchestration layer.** Claude Code, Codex, Antigravity — they all work in isolation. You end up copy-pasting between them or writing glue scripts. OpenCAC turns that into a single pipeline.
-- **Cloud tokens are expensive.** Chaining research, planning, and execution across three models adds up fast.
-- **Local LLMs are cheap but not good enough on their own.** They can handle parts of the workflow, just not all of it.
+Three agents. Zero coordination. You're copy-pasting between Claude Code, Codex, and Antigravity like it's 2023. Cloud tokens burn money. Local LLMs save money but can't carry a full workflow.
 
-OpenCAC brings Claude Code, Codex, and Antigravity (or any local LLM) into one automated pipeline — protocol-validated, fully audited, runs locally or in the cloud — instead of three tools that don't talk to each other.
+OpenCAC fixes this: one pipeline, validated handoffs, full audit trail. Run it on the cloud, on local llama.cpp with spec decoding, or both. Your agents finally talk to each other.
 
 ## 1. Four-role pipeline
 
