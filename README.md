@@ -1,10 +1,14 @@
 # OpenCAC
 
-Multi-agent orchestration for AI coding tools. Wires Claude Code, Antigravity, and Codex into one pipeline with validated handoffs, audit logging, and speculative decoding for local LLMs.
+**One pipeline for Claude Code, Codex, and Antigravity — validated handoffs, audit logging, and speculative decoding for local LLMs.**
 
-- No orchestration layer — Claude Code, Codex, Antigravity work in isolation, copy-paste or glue scripts in between
-- Cloud tokens are expensive
-- Local LLMs are cheap but can't carry a full workflow alone
+## Why
+
+- **No orchestration layer today** — AI coding agents work in isolation; stitching them together means copy-paste or throwaway glue scripts
+- **Cloud tokens add up fast** — every round-trip to a hosted model costs real money
+- **Local LLMs are cheap but limited** — a single small model can't carry a full research-plan-execute workflow on its own
+
+OpenCAC solves this by chaining agents into a four-role pipeline where each agent does what it's best at, with structured validation at every hop.
 
 ```bash
 pip install .
@@ -13,44 +17,50 @@ opencac run "refactor the auth module" --mode private
 
 ## Features
 
-```
-1. FOUR-ROLE PIPELINE
-   dispatcher → antigravity (research) → claude-code (plan) → codex (execute)
-   - Structured envelopes at every hop; downstream critiques upstream before acting
-   - Codex runs assess_plan — dangerous commands rejected, not blindly run
+### Four-Role Pipeline
 
-2. ROUTING MODES
-   private   Loopback only. Private guard required. For sensitive / air-gapped work.
-   cloud     Cloud API tokens. No local infra needed.
-   hybrid    Cloud first, falls back to local LLM when tokens are missing.
+`dispatcher` → `antigravity` (research) → `claude-code` (plan) → `codex` (execute)
 
-3. LOCAL LLM SUPPORT
-   - Each role points to its own llama.cpp server endpoint
-   - Built-in spec decoding config (n-gram / draft-model) → generates llama-server commands
-   - Probe: constrained-grammar check verifies each endpoint before pipeline starts
+- Structured envelopes at every hop; downstream critiques upstream before acting
+- Codex runs `assess_plan` — dangerous commands are rejected, not blindly executed
 
-4. SIDECAR VALIDATION
-   - Schema check on every hop — agent whitelist, message-type whitelist, payload fields
-   - Blocked commands: rm -rf /, shutdown, mkfs, fork bomb
-   - Private mode: loopback-only on all URLs including callbacks
+### Routing Modes
 
-5. JSONL AUDIT LOG
-   - One JSON line per action — timestamp, session_id, kind
-   - Filter by session, query last N entries
-   - Session resume: rebuild plan from log, skip completed steps
+- **Private** — loopback only, private guard required; for sensitive or air-gapped work
+- **Cloud** — uses cloud API tokens, no local infra needed
+- **Hybrid** — cloud-first, falls back to local LLM when tokens are missing
 
-6. CLI + HTTP
-   CLI          opencac run, opencac audit, opencac resume, interactive REPL
-   HTTP         POST /run, GET /tasks/<id>, per-agent endpoints, /.well-known/agent.json
-   Distributed  CLI routes through HTTP service, sync and async
+### Local LLM Support
 
-7. SMART QUESTION ROUTING
-   - Ends with ? or starts with who/what/how/why → QA path, skips pipeline
-   - Task input → full pipeline, outputs artifacts
-   - Mentions docs/code/error/test → research step first
-```
+- Each role points to its own `llama.cpp` server endpoint
+- Built-in speculative decoding config (n-gram / draft-model) generates `llama-server` commands automatically
+- Probe: constrained-grammar check verifies each endpoint before the pipeline starts
 
-## Quick start
+### Sidecar Validation
+
+- Schema check on every hop — agent whitelist, message-type whitelist, payload fields
+- Blocked commands: `rm -rf /`, `shutdown`, `mkfs`, fork bomb
+- Private mode enforces loopback-only on all URLs including callbacks
+
+### JSONL Audit Log
+
+- One JSON line per action — timestamp, session ID, kind
+- Filter by session or query last N entries
+- Session resume: rebuild plan from log, skip completed steps
+
+### CLI + HTTP
+
+- **CLI** — `opencac run`, `opencac audit`, `opencac resume`, interactive REPL
+- **HTTP** — `POST /run`, `GET /tasks/<id>`, per-agent endpoints, `/.well-known/agent.json`
+- **Distributed** — CLI routes through the HTTP service, sync and async
+
+### Smart Question Routing
+
+- Ends with `?` or starts with who/what/how/why → QA path, skips the full pipeline
+- Task input → full pipeline, outputs artifacts
+- Mentions docs/code/error/test → research step first
+
+## Quick Start
 
 ```bash
 git clone https://github.com/lpoee/opencac.git && cd opencac
@@ -82,7 +92,7 @@ docker build -t opencac .
 docker run --rm -p 8000:8000 -v "$(pwd)/data:/data" opencac
 ```
 
-## Spec decoding
+## Speculative Decoding
 
 ```bash
 opencac run "task" --mode private \
@@ -90,14 +100,14 @@ opencac run "task" --mode private \
   --draft-max 64 --draft-min 16
 ```
 
-| Strategy                   |                                | VRAM        |
-| -------------------------- | ------------------------------ | ----------- |
-| Self-speculative (default) | n-gram cache on main model     | Zero        |
-| Draft-model                | Smaller model for draft tokens | Extra model |
+| Strategy                   | Description                          | VRAM        |
+| -------------------------- | ------------------------------------ | ----------- |
+| Self-speculative (default) | n-gram cache on main model           | Zero extra  |
+| Draft-model                | Smaller model generates draft tokens | Extra model |
 
 ## HTTP API
 
-| Method | Path                             |                   |
+| Method | Path                             | Description       |
 | ------ | -------------------------------- | ----------------- |
 | `GET`  | `/.well-known/agent.json`        | Agent card        |
 | `GET`  | `/tasks/<id>`                    | Status + steps    |
