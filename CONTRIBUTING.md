@@ -1,4 +1,4 @@
-# Contributing to A2A Fabric
+# Contributing to OpenCAC
 
 ## Development Setup
 

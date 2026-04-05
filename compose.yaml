@@ -3,7 +3,8 @@ services:
     build:
       context: .
     image: ghcr.io/lpoee/opencac:local
-    command: ["serve", "--host", "0.0.0.0", "--port", "8000", "--workspace", "/data"]
+    command:
+      ["serve", "--host", "0.0.0.0", "--port", "8000", "--workspace", "/data"]
     ports:
       - "8000:8000"
     volumes:
@@ -16,5 +17,8 @@ services:
       A2A_CLAUDE_CODE_TOKEN: ${A2A_CLAUDE_CODE_TOKEN:-}
       A2A_CODEX_TOKEN: ${A2A_CODEX_TOKEN:-}
       A2A_CLOUD_FALLBACK_LOCAL: ${A2A_CLOUD_FALLBACK_LOCAL:-0}
+      OPENCAC_RESEARCH_URL: ${OPENCAC_RESEARCH_URL:-}
+      OPENCAC_PLANNER_URL: ${OPENCAC_PLANNER_URL:-}
+      OPENCAC_CODEX_BINARY: ${OPENCAC_CODEX_BINARY:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"

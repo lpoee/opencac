@@ -11,7 +11,7 @@ ALLOWED_MSG_TYPES = [
     "approval",
     "exec_result",
 ]
-ALLOWED_ACTIONS = ["create", "edit", "delete", "run", "test", "verify"]
+ALLOWED_ACTIONS = ["create", "edit", "delete", "run", "test", "verify", "generate"]
 ALLOWED_VERDICTS = ["approve", "reject", "revise"]
 ALLOWED_EXEC_STATUS = ["success", "partial", "failed"]
 ALLOWED_STEP_STATUS = ["done", "skipped", "failed"]
