@@ -8,9 +8,9 @@ opencac run "refactor the auth module" --mode private
 ```
 ##  Why
 ```
-- No orchestration layer today — AI coding agents work in isolation; stitching them together means copy-paste or throwaway glue scripts
-- Cloud tokens add up fast — every round-trip to a hosted model costs real money
-- Local LLMs are cheap but limited — a single small model can't carry a full research-plan-execute workflow on its own
+- AI coding agents don't talk to each other — Claude Code plans, Codex executes, Antigravity researches, but you're the glue in between.           
+  - Cloud-only burns money — every hosted model call costs real tokens.         
+  - Local-only lacks range — one small LLM can't research, plan, and ship on its own.
 
 OpenCAC solves this by chaining agents into a four-role pipeline where each agent does what it's best at, with structured validation at every hop.
 ```
