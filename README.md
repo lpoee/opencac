@@ -1,6 +1,6 @@
 # OpenCAC
 
-Multi-agent orchestration for AI coding tools. Wires Claude Code, Antigravity, and Codex into one pipeline with validated handoffs, audit logging, and speculative decoding for local LLMs.
+One pipeline for Claude Code, Antigravity, and Codex. Validated handoffs. Audit log. Speculative decoding for local LLMs.
 
 ```bash
 pip install .
@@ -9,32 +9,23 @@ opencac run "refactor the auth module" --mode private
 
 ## Why
 
-No orchestration layer exists for multi-agent AI coding. You copy-paste between Claude Code, Codex, and Antigravity with no validation and no audit trail. Cloud tokens are expensive. Local LLMs are cheap but too weak to handle the full workflow alone.
+No orchestration layer for multi-agent coding. You copy-paste between tools, nothing validates the handoffs, no log when things break. Cloud tokens are expensive. Local LLMs are cheap but can't do the whole job alone.
 
-OpenCAC chains them into one pipeline where each stage critiques the one before it. Runs on cloud, local llama.cpp with speculative decoding, or both.
-
-## How it works
+OpenCAC chains them into one pipeline. Each stage critiques the one before it. Cloud, local with spec decoding, or both.
 
 ```
 dispatcher → antigravity (research) → claude-code (plan) → codex (critique + execute)
-     │              │                        │                        │
-     └──────────────┴────────────────────────┴────────────────────────┘
-                          sidecar validates every hop
-                          audit.jsonl records every event
+                              sidecar validates every hop
 ```
 
-Structured envelopes between every hop. Codex runs `assess_plan` before executing anything -- dangerous commands get rejected, not run.
-
-## Highlights
-
-- **One pipeline, four roles** -- research → plan → critique → execute, each layer critiques the one above
-- **Sidecar validation** -- agent whitelist, message type whitelist, required payload fields, blocked commands, loopback-only in private mode
-- **Cloud, local, or both** -- API tokens, local llama.cpp endpoints, or hybrid with automatic fallback
-- **Speculative decoding** -- generates `llama-server` commands with n-gram / draft-model flags; critique layer catches bad local outputs before execution
-- **Endpoint probing** -- constrained-grammar probe verifies each LLM endpoint before the pipeline starts
-- **Audit trail** -- append-only JSONL, filter by session, resume crashed runs with completed steps auto-skipped
-- **CLI + HTTP + distributed** -- REPL with smart question detection, `POST /run`, async execution with polling
-- **Zero dependencies** -- stdlib only
+- **Four roles** -- research → plan → critique → execute, each layer critiques the one above
+- **Sidecar** -- agent/message-type whitelist, required payload fields, blocked commands, loopback-only in private mode
+- **Cloud / local / hybrid** -- API tokens, llama.cpp endpoints, or automatic fallback
+- **Spec decoding** -- generates `llama-server` commands; critique catches bad local outputs before execution
+- **Endpoint probes** -- constrained-grammar check before pipeline starts
+- **Audit** -- append-only JSONL, session filter, resume with auto-skip
+- **CLI + HTTP** -- REPL, `POST /run`, async distributed, smart question detection
+- **Zero deps** -- stdlib only
 
 ## Quick start
 
