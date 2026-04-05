@@ -7,12 +7,6 @@ pip install .
 opencac run "refactor the auth module" --mode private
 ```
 
-## Why
-
-Three agents. Zero coordination. You're copy-pasting between Claude Code, Codex, and Antigravity like it's 2023. Cloud tokens burn money. Local LLMs save money but can't carry a full workflow.
-
-OpenCAC fixes this: one pipeline, validated handoffs, full audit trail. Run it on the cloud, on local llama.cpp with spec decoding, or both. Your agents finally talk to each other.
-
 ## Features
 
 ```
