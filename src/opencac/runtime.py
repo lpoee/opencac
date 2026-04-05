@@ -80,6 +80,23 @@ AGENT_SERVICE_ENV = {
     "codex": "OPENCAC_CODEX_BINARY",
 }
 
+DEFAULT_SERVICE_URL = {
+    "antigravity": "http://127.0.0.1:18791",
+    "claude-code": "http://127.0.0.1:9300",
+}
+
+_service_probe_cache: Dict[str, Optional[str]] = {}
+
+
+def _probe_service_available(url: str) -> bool:
+    """Quick health probe — returns True if the URL responds within 1s."""
+    try:
+        request = Request(f"{url.rstrip('/')}/health", method="GET")
+        with urlopen(request, timeout=1) as response:
+            return response.status == 200
+    except Exception:
+        return False
+
 
 def _cloud_token_present(role: str) -> bool:
     token_env = CLOUD_TOKEN_ENV[role]
@@ -472,18 +489,31 @@ class InferenceConfig:
         return None
 
     def service_url(self, role: str) -> Optional[str]:
-        """Resolve real agent service URL from explicit config or env."""
+        """Resolve real agent service URL: explicit > env > auto-detect default port."""
         explicit = {"antigravity": self.research_service_url, "claude-code": self.planner_service_url}.get(role)
         if explicit:
             return explicit
         env_key = AGENT_SERVICE_ENV.get(role, "")
-        return os.getenv(env_key, "").strip() or None
+        env_val = os.getenv(env_key, "").strip()
+        if env_val:
+            return env_val
+        default = DEFAULT_SERVICE_URL.get(role)
+        if not default:
+            return None
+        cache_key = f"svc:{role}"
+        if cache_key not in _service_probe_cache:
+            _service_probe_cache[cache_key] = default if _probe_service_available(default) else None
+        return _service_probe_cache[cache_key]
 
     def codex_bin(self) -> Optional[str]:
-        """Resolve codex binary path from explicit config or env."""
+        """Resolve codex binary: explicit > env > shutil.which('codex')."""
         if self.codex_binary:
             return self.codex_binary
-        return os.getenv(AGENT_SERVICE_ENV.get("codex", ""), "").strip() or None
+        env_val = os.getenv(AGENT_SERVICE_ENV.get("codex", ""), "").strip()
+        if env_val:
+            return env_val
+        import shutil as _shutil
+        return _shutil.which("codex")
 
     def strategy_label(self) -> str:
         if not self.speculative:
