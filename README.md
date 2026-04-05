@@ -2,6 +2,8 @@
 
 Multi-agent orchestration for AI coding tools. Wires Claude Code, Antigravity, and Codex into one pipeline with validated handoffs, audit logging, and speculative decoding for local LLMs.
 
+No standard orchestration layer for multi-agent AI coding. Claude Code, Codex, Antigravity — they all work in isolation. You end up copy-pasting between them or writing glue scripts. Cloud tokens are expensive. Local LLMs are cheap but not good enough on their own. OpenCAC turns them into one automated pipeline — protocol-validated, fully audited, runs locally or in the cloud.
+
 ```bash
 pip install .
 opencac run "refactor the auth module" --mode private
