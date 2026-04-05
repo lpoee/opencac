@@ -2,19 +2,21 @@
 
 **Orchestrate Claude Code, Antigravity, and Codex as a single pipeline** -- across cloud APIs, local LLMs, or both.
 
-OpenCAC is a zero-dependency Python CLI and HTTP service that chains multiple AI coding agents into a structured research-plan-critique-execute workflow with built-in speculative decoding for local LLMs. Run the full pipeline on your own hardware at near-zero token cost, with schema validation on every hop and a complete audit trail -- or fall back to cloud APIs when you need them.
+OpenCAC is a zero-dependency Python CLI and HTTP service that chains multiple AI coding agents into a structured research-plan-critique-execute workflow. Every hop is schema-validated, every action is audit-logged, and the pipeline routes flexibly across cloud APIs, local LLMs, or both.
 
 ## Why
 
-Cloud API tokens are expensive. A single complex coding task that chains research, planning, and execution across multiple agents can burn through dollars of tokens in minutes. Local LLMs are cheap to run but too weak on their own to handle a full multi-step workflow reliably.
+Using multiple AI coding agents today means copying context between tools by hand, hoping each agent's output is safe to feed into the next, and having no record of what happened when something breaks.
 
-OpenCAC bridges this gap: run local LLMs with speculative decoding for high throughput, wrap them in a structured pipeline with validation and critique at every step, and only fall back to cloud APIs when local inference isn't available. You get cloud-grade orchestration quality at local-inference cost.
+OpenCAC solves this with a structured orchestration pipeline: each agent has a defined role (research, plan, critique, execute), every message is validated by a protocol sidecar before it reaches the next agent, and every decision is recorded in an append-only audit log.
 
-Concretely, OpenCAC provides:
+When cloud API costs matter, the same pipeline can run on local llama.cpp endpoints with speculative decoding -- getting 2-4x faster inference on the same hardware. The pipeline's built-in critique layer catches bad local outputs before they cause damage, so you save tokens without giving up safety. But cloud mode works just as well when you have the tokens and want the strongest models.
 
-- **Local-first with speculative decoding** -- run the entire pipeline on local llama.cpp endpoints with n-gram or draft-model speculation, keeping token costs at zero while maintaining throughput
+OpenCAC provides:
+
 - **A structured pipeline** with protocol validation between every agent hop -- no unvalidated payloads pass through, each layer critiques the one above it before work moves downstream
-- **Cloud / local / hybrid routing** -- use cloud APIs when available, fall back to local endpoints when they're not, or go fully local for air-gapped work
+- **Cloud / local / hybrid routing** -- use cloud APIs, local llama.cpp endpoints, or both with automatic fallback
+- **Speculative decoding** -- when running locally, n-gram or draft-model speculation keeps throughput high while the critique layer maintains output quality
 - **A complete audit trail** -- every decision, every agent output, every execution result is logged as append-only JSONL
 - **Session resume** -- pick up where a failed or interrupted run left off without re-running completed steps
 
@@ -171,9 +173,7 @@ curl http://127.0.0.1:8000/tasks/<session-id>
 
 ## Speculative Decoding
 
-This is the core of how OpenCAC keeps costs down without sacrificing quality. Instead of sending every token through an expensive cloud API, the pipeline runs on local llama.cpp servers with speculative decoding enabled -- generating tokens 2-4x faster than naive autoregressive inference on the same hardware.
-
-The quality of individual local outputs doesn't need to be perfect. The pipeline's critique layer (Codex reviews every plan before execution) catches bad outputs before they cause damage, so you get the cost savings of local inference with the safety net of structured validation.
+When running in private or hybrid mode with local llama.cpp endpoints, speculative decoding makes local inference practical for the full pipeline. Instead of paying per-token cloud costs, you get 2-4x faster generation on the same hardware -- and the pipeline's critique layer catches low-quality outputs before they reach execution.
 
 OpenCAC generates ready-to-use `llama-server` launch commands with the right speculation flags. This is built into the pipeline config, not a separate tool.
 
