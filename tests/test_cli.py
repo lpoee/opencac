@@ -7,7 +7,7 @@ class CLITests(BasePipelineTestCase):
     def test_cli_discover_and_task_get(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
-            audit = AuditLog(workspace / ".a2a" / "audit.jsonl")
+            audit = AuditLog(workspace / ".opencac" / "audit.jsonl")
             thread = threading.Thread(
                 target=serve,
                 kwargs={"host": "127.0.0.1", "port": 18774, "workspace": workspace, "audit": audit},
@@ -19,7 +19,7 @@ class CLITests(BasePipelineTestCase):
             env = os.environ.copy()
             env["PYTHONPATH"] = str(SRC)
             discover = subprocess.run(
-                ["python3", "-m", "a2a_fabric.cli", "discover", "--base-url", "http://127.0.0.1:18774"],
+                ["python3", "-m", "opencac.cli", "discover", "--base-url", "http://127.0.0.1:18774"],
                 check=True,
                 capture_output=True,
                 text=True,
@@ -34,7 +34,7 @@ class CLITests(BasePipelineTestCase):
                 run_result = json.loads(response.read().decode("utf-8"))
 
             task_get = subprocess.run(
-                ["python3", "-m", "a2a_fabric.cli", "task-get", run_result["session_id"], "--base-url", "http://127.0.0.1:18774"],
+                ["python3", "-m", "opencac.cli", "task-get", run_result["session_id"], "--base-url", "http://127.0.0.1:18774"],
                 check=True,
                 capture_output=True,
                 text=True,
@@ -46,7 +46,7 @@ class CLITests(BasePipelineTestCase):
     def test_cli_run_distributed(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
-            audit = AuditLog(workspace / ".a2a" / "audit.jsonl")
+            audit = AuditLog(workspace / ".opencac" / "audit.jsonl")
             thread = threading.Thread(
                 target=serve,
                 kwargs={"host": "127.0.0.1", "port": 18773, "workspace": workspace, "audit": audit},
@@ -61,7 +61,7 @@ class CLITests(BasePipelineTestCase):
                 [
                     "python3",
                     "-m",
-                    "a2a_fabric.cli",
+                    "opencac.cli",
                     "run",
                     "distributed cli run",
                     "--mode",
@@ -86,7 +86,7 @@ class CLITests(BasePipelineTestCase):
             [
                 "python3",
                 "-m",
-                "a2a_fabric.cli",
+                "opencac.cli",
                 "run",
                 "bad target",
                 "--mode",
@@ -107,7 +107,7 @@ class CLITests(BasePipelineTestCase):
         env = os.environ.copy()
         env["PYTHONPATH"] = str(SRC)
         proc = subprocess.run(
-            ["python3", "-m", "a2a_fabric.cli"],
+            ["python3", "-m", "opencac.cli"],
             input="/exit\n",
             capture_output=True,
             text=True,
@@ -121,7 +121,7 @@ class CLITests(BasePipelineTestCase):
     def test_cli_interactive_runs_distributed_private_prompt(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
-            audit = AuditLog(workspace / ".a2a" / "audit.jsonl")
+            audit = AuditLog(workspace / ".opencac" / "audit.jsonl")
             thread = threading.Thread(
                 target=serve,
                 kwargs={"host": "127.0.0.1", "port": 18782, "workspace": workspace, "audit": audit},
@@ -133,7 +133,7 @@ class CLITests(BasePipelineTestCase):
             env = os.environ.copy()
             env["PYTHONPATH"] = str(SRC)
             proc = subprocess.run(
-                ["python3", "-m", "a2a_fabric.cli"],
+                ["python3", "-m", "opencac.cli"],
                 input="/base-url http://127.0.0.1:18782\ninteractive private run\n/exit\n",
                 capture_output=True,
                 text=True,
@@ -157,7 +157,7 @@ class CLITests(BasePipelineTestCase):
                 env["PYTHONPATH"] = str(SRC)
                 env["A2A_CODEX_URL"] = "http://127.0.0.1:18783"
                 proc = subprocess.run(
-                    ["python3", "-m", "a2a_fabric.cli"],
+                    ["python3", "-m", "opencac.cli"],
                     input=f"/workspace {workspace}\n你是谁？\n/exit\n",
                     capture_output=True,
                     text=True,
@@ -170,7 +170,7 @@ class CLITests(BasePipelineTestCase):
                 self.assertIn("audit:", proc.stdout)
                 self.assertNotIn("artifacts:", proc.stdout)
                 self.assertGreaterEqual(len(codex_handler.requests), 1)
-                entries = AuditLog(workspace / ".a2a" / "audit.jsonl").read(last=10)
+                entries = AuditLog(workspace / ".opencac" / "audit.jsonl").read(last=10)
                 kinds = [entry["kind"] for entry in entries]
                 self.assertIn("question_received", kinds)
                 self.assertIn("question_answered", kinds)
@@ -180,7 +180,7 @@ class CLITests(BasePipelineTestCase):
                     server.server_close()
 
     def test_question_research_heuristic_only_triggers_for_evidence_requests(self) -> None:
-        from a2a_fabric.cli import _question_needs_research
+        from opencac.cli import _question_needs_research
 
         self.assertFalse(_question_needs_research("你是谁？"))
         self.assertFalse(_question_needs_research("how do you think about this architecture?"))
@@ -191,7 +191,7 @@ class CLITests(BasePipelineTestCase):
         env = os.environ.copy()
         env["PYTHONPATH"] = str(SRC)
         proc = subprocess.run(
-            ["python3", "-m", "a2a_fabric.cli"],
+            ["python3", "-m", "opencac.cli"],
             input="/json on\n/exit\n",
             capture_output=True,
             text=True,

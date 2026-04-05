@@ -16,14 +16,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="opencac", description="OpenCAC CLI")
     sub = parser.add_subparsers(dest="command", required=False)
 
-    run_parser = sub.add_parser("run", help="dispatch a natural-language task into the A2A pipeline")
+    run_parser = sub.add_parser("run", help="dispatch a natural-language task into the OpenCAC pipeline")
     run_parser.add_argument("prompt", help="natural language instruction")
     run_parser.add_argument("--mode", choices=["cloud", "private"], default="cloud")
     run_parser.add_argument("--workspace", default=".", help="artifact root")
-    run_parser.add_argument("--audit", default=".a2a/audit.jsonl", help="audit JSONL path")
-    run_parser.add_argument("--distributed", action="store_true", help="route run through the local HTTP A2A service")
+    run_parser.add_argument("--audit", default=".opencac/audit.jsonl", help="audit JSONL path")
+    run_parser.add_argument("--distributed", action="store_true", help="route run through the local OpenCAC HTTP service")
     run_parser.add_argument("--async-run", action="store_true", help="return immediately and continue distributed processing in the background")
-    run_parser.add_argument("--base-url", default="http://127.0.0.1:8000", help="A2A service base URL for distributed mode")
+    run_parser.add_argument("--base-url", default="http://127.0.0.1:8000", help="OpenCAC service base URL for distributed mode")
     run_parser.add_argument("--callback-url", help="reverse POST endpoint for rejection or execution result callbacks")
     run_parser.add_argument("--model", default="gpt-oss:20b")
     run_parser.add_argument("--speculative-mode", choices=["auto", "draft-model", "self-speculative"], default="auto")
@@ -36,23 +36,23 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--spec-ngram-min-hits", type=int, default=1)
 
     audit_parser = sub.add_parser("audit", help="show recent audit entries")
-    audit_parser.add_argument("--audit", default=".a2a/audit.jsonl", help="audit JSONL path")
+    audit_parser.add_argument("--audit", default=".opencac/audit.jsonl", help="audit JSONL path")
     audit_parser.add_argument("--session-id")
     audit_parser.add_argument("--last", type=int, default=20)
 
     resume_parser = sub.add_parser("resume", help="resume a session from JSONL audit")
     resume_parser.add_argument("session_id")
     resume_parser.add_argument("--workspace", default=".", help="artifact root")
-    resume_parser.add_argument("--audit", default=".a2a/audit.jsonl", help="audit JSONL path")
+    resume_parser.add_argument("--audit", default=".opencac/audit.jsonl", help="audit JSONL path")
 
     sidecar_parser = sub.add_parser("sidecar-check", help="validate a JSON message through the sidecar")
     sidecar_parser.add_argument("message", help="raw JSON string")
-    sidecar_parser.add_argument("--audit", default=".a2a/audit.jsonl", help="audit JSONL path")
+    sidecar_parser.add_argument("--audit", default=".opencac/audit.jsonl", help="audit JSONL path")
 
-    discover_parser = sub.add_parser("discover", help="fetch the local agent card from an A2A service")
+    discover_parser = sub.add_parser("discover", help="fetch the local agent card from an OpenCAC service")
     discover_parser.add_argument("--base-url", default="http://127.0.0.1:8000")
 
-    task_get_parser = sub.add_parser("task-get", help="fetch task status from an A2A service")
+    task_get_parser = sub.add_parser("task-get", help="fetch task status from an OpenCAC service")
     task_get_parser.add_argument("session_id")
     task_get_parser.add_argument("--base-url", default="http://127.0.0.1:8000")
 
@@ -62,11 +62,11 @@ def build_parser() -> argparse.ArgumentParser:
     send_parser.add_argument("--base-url", default="http://127.0.0.1:8000")
     send_parser.add_argument("--execute", action="store_true")
 
-    serve_parser = sub.add_parser("serve", help="start the HTTP A2A fabric service")
+    serve_parser = sub.add_parser("serve", help="start the OpenCAC HTTP service")
     serve_parser.add_argument("--host", default="127.0.0.1")
     serve_parser.add_argument("--port", type=int, default=8000)
     serve_parser.add_argument("--workspace", default=".", help="artifact root")
-    serve_parser.add_argument("--audit", default=".a2a/audit.jsonl", help="audit JSONL path")
+    serve_parser.add_argument("--audit", default=".opencac/audit.jsonl", help="audit JSONL path")
 
     sub.add_parser("interactive", help="start interactive CLI mode")
     return parser

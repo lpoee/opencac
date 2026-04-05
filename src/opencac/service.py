@@ -13,6 +13,7 @@ from urllib.parse import parse_qs, urlparse
 
 from .agents import Antigravity, ClaudeCodePlanner, CodexExecutor, InferenceConfig, RoutingConfig, Sidecar, ensure_private_runtime, make_envelope, run_pipeline
 from .audit import AuditLog
+from .runtime import HTTP_TIMEOUT
 
 
 class FabricRuntime:
@@ -128,7 +129,7 @@ class FabricRuntime:
             headers={"Content-Type": "application/json"},
             method="POST",
         )
-        with urllib.request.urlopen(request, timeout=10) as response:
+        with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT) as response:
             return json.loads(response.read().decode("utf-8"))
 
     def _run_distributed_session(self, session_id: str, prompt: str, mode: str, inference: InferenceConfig, callback_url: Optional[str] = None) -> Dict[str, Any]:
@@ -240,7 +241,7 @@ class FabricRuntime:
 
 def make_handler(runtime: FabricRuntime):
     class Handler(BaseHTTPRequestHandler):
-        server_version = "A2AFabric/0.1"
+        server_version = "OpenCAC/0.1"
 
         def _send(self, status: int, payload: Dict[str, Any]) -> None:
             body = json.dumps(payload, ensure_ascii=False).encode("utf-8")

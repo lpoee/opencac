@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 
 from .audit import AuditLog
 from .roles import Antigravity, ClaudeCodePlanner, CodexExecutor
-from .runtime import InferenceConfig, RoutingConfig, Sidecar, ensure_private_runtime, make_envelope
+from .runtime import InferenceConfig, LLM_TIMEOUT, RoutingConfig, Sidecar, ensure_private_runtime, make_envelope
 
 def run_pipeline(*, prompt: str, mode: str, workspace: Path, audit: AuditLog, inference: Optional[InferenceConfig] = None, callback_url: Optional[str] = None) -> Dict[str, Any]:
     session_id = str(uuid.uuid4())
@@ -52,7 +52,7 @@ def run_pipeline(*, prompt: str, mode: str, workspace: Path, audit: AuditLog, in
 
     with ThreadPoolExecutor(max_workers=1) as pool:
         audit.append({"kind": "research_async_started", "session_id": session_id})
-        report = sidecar.forward(pool.submit(research.handle, research_request).result(timeout=30))
+        report = sidecar.forward(pool.submit(research.handle, research_request).result(timeout=LLM_TIMEOUT))
     audit.append({"kind": "research_report", "session_id": session_id, "message": report})
 
     plan = sidecar.forward(planner.handle(report))

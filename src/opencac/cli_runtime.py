@@ -10,6 +10,7 @@ from typing import Optional, TextIO
 
 from .agents import InferenceConfig, Sidecar, run_pipeline
 from .audit import AuditLog, utc_now
+from .runtime import HTTP_TIMEOUT, LLM_TIMEOUT
 
 QUESTION_PREFIXES = {
     "who",
@@ -90,7 +91,7 @@ class InteractiveState:
     def __init__(self) -> None:
         self.mode = "private"
         self.workspace = str(Path.cwd())
-        self.audit = ".a2a/audit.jsonl"
+        self.audit = ".opencac/audit.jsonl"
         self.distributed = True
         self.async_run = False
         self.base_url = "http://127.0.0.1:8000"
@@ -125,7 +126,7 @@ class InteractiveState:
 
 
 def _http_get(url: str) -> dict:
-    with urllib.request.urlopen(url, timeout=10) as response:
+    with urllib.request.urlopen(url, timeout=HTTP_TIMEOUT) as response:
         return json.loads(response.read().decode("utf-8"))
 
 
@@ -136,7 +137,7 @@ def _http_post(url: str, payload: dict) -> dict:
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with urllib.request.urlopen(request, timeout=10) as response:
+    with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT) as response:
         return json.loads(response.read().decode("utf-8"))
 
 
@@ -166,7 +167,7 @@ def _completion_text(base_url: str, prompt: str, *, max_tokens: int = 96) -> str
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with urllib.request.urlopen(request, timeout=20) as response:
+    with urllib.request.urlopen(request, timeout=LLM_TIMEOUT) as response:
         data = json.loads(response.read().decode("utf-8"))
     return data.get("content", "").strip()
 
