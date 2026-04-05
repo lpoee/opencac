@@ -229,9 +229,8 @@ class AgentIntegrationTests(BasePipelineTestCase):
             }
             from opencac.agents import CodexExecutor, RoutingConfig
 
-            with mock.patch("shutil.which", return_value=None):
-                executor = CodexExecutor(RoutingConfig(mode="private"), InferenceConfig(), workspace, audit)
-                result = executor.execute(plan)
+            executor = CodexExecutor(RoutingConfig(mode="private"), InferenceConfig(), workspace, audit)
+            result = executor.execute(plan)
             gen_step = next(s for s in result["payload"]["steps_completed"] if s["step_id"] == 2)
             self.assertEqual(gen_step["status"], "failed")
             self.assertIn("codex binary", gen_step["output"])
@@ -370,3 +369,11 @@ class AgentIntegrationTests(BasePipelineTestCase):
         with mock.patch.dict(os.environ, {"OPENCAC_CODEX_BINARY": "/opt/codex"}, clear=False):
             inference = InferenceConfig()
             self.assertEqual(inference.codex_bin(), "/opt/codex")
+
+    def test_service_url_resolves_from_config_file(self) -> None:
+        cfg = {"research_url": "http://localhost:18791", "planner_url": "http://localhost:9300", "codex_binary": "/usr/bin/codex"}
+        with mock.patch("opencac.runtime._load_config", return_value=cfg):
+            inference = InferenceConfig()
+            self.assertEqual(inference.service_url("antigravity"), "http://localhost:18791")
+            self.assertEqual(inference.service_url("claude-code"), "http://localhost:9300")
+            self.assertEqual(inference.codex_bin(), "/usr/bin/codex")

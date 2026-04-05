@@ -80,22 +80,23 @@ AGENT_SERVICE_ENV = {
     "codex": "OPENCAC_CODEX_BINARY",
 }
 
-DEFAULT_SERVICE_URL = {
-    "antigravity": "http://127.0.0.1:18791",
-    "claude-code": "http://127.0.0.1:9300",
-}
-
-_service_probe_cache: Dict[str, Optional[str]] = {}
+_config_cache: Optional[Dict[str, Any]] = None
 
 
-def _probe_service_available(url: str) -> bool:
-    """Quick health probe — returns True if the URL responds within 1s."""
-    try:
-        request = Request(f"{url.rstrip('/')}/health", method="GET")
-        with urlopen(request, timeout=1) as response:
-            return response.status == 200
-    except Exception:
-        return False
+def _load_config() -> Dict[str, Any]:
+    """Load ~/.opencac/config.json if it exists."""
+    global _config_cache
+    if _config_cache is not None:
+        return _config_cache
+    config_path = Path.home() / ".opencac" / "config.json"
+    if config_path.exists():
+        try:
+            _config_cache = json.loads(config_path.read_text(encoding="utf-8"))
+        except Exception:
+            _config_cache = {}
+    else:
+        _config_cache = {}
+    return _config_cache
 
 
 def _cloud_token_present(role: str) -> bool:
@@ -489,7 +490,7 @@ class InferenceConfig:
         return None
 
     def service_url(self, role: str) -> Optional[str]:
-        """Resolve real agent service URL: explicit > env > auto-detect default port."""
+        """Resolve real agent service URL: explicit > env > ~/.opencac/config.json."""
         explicit = {"antigravity": self.research_service_url, "claude-code": self.planner_service_url}.get(role)
         if explicit:
             return explicit
@@ -497,23 +498,19 @@ class InferenceConfig:
         env_val = os.getenv(env_key, "").strip()
         if env_val:
             return env_val
-        default = DEFAULT_SERVICE_URL.get(role)
-        if not default:
-            return None
-        cache_key = f"svc:{role}"
-        if cache_key not in _service_probe_cache:
-            _service_probe_cache[cache_key] = default if _probe_service_available(default) else None
-        return _service_probe_cache[cache_key]
+        cfg = _load_config()
+        config_key = {"antigravity": "research_url", "claude-code": "planner_url"}.get(role)
+        return cfg.get(config_key) if config_key else None
 
     def codex_bin(self) -> Optional[str]:
-        """Resolve codex binary: explicit > env > shutil.which('codex')."""
+        """Resolve codex binary: explicit > env > ~/.opencac/config.json."""
         if self.codex_binary:
             return self.codex_binary
         env_val = os.getenv(AGENT_SERVICE_ENV.get("codex", ""), "").strip()
         if env_val:
             return env_val
-        import shutil as _shutil
-        return _shutil.which("codex")
+        cfg = _load_config()
+        return cfg.get("codex_binary")
 
     def strategy_label(self) -> str:
         if not self.speculative:
