@@ -2,13 +2,13 @@
 
 **OpenCAC is multi-agent orchestration CLI for AI coding tools. Wires Claude Code, Antigravity, and Codex into one pipeline with validated handoffs, audit logging, and speculative decoding for local LLMs.**
 
-For developers who already use multiple AI coding agents and want one CLI to orchestrate them — with cloud models, local LLMs, or both.
 
 ```bash
 pip install .
 opencac run "refactor the auth module" --mode private
 ```
 ##  Why
+For developers who already use multiple AI coding agents and want one CLI to orchestrate them — with cloud models, local LLMs, or both.
 ```
    - Claude Code, Codex, Antigravity powerful alone, but each runs in its own world        
    - Cloud api burns money — every hosted model call costs real tokens.         
