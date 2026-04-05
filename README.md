@@ -1,69 +1,44 @@
 # OpenCAC
 
-**Turn Claude Code, Antigravity, and Codex into one automated pipeline** -- with protocol validation, audit logging, and flexible routing across cloud APIs, local LLMs, or both.
+A CLI and HTTP service that wires Claude Code, Antigravity, and Codex into a single research → plan → critique → execute pipeline. Runs on cloud APIs, local LLMs, or both.
 
-## The Problem
+## Why this exists
 
-There is no standard orchestration layer for AI coding agents. Today you use Claude Code, Codex, and Gemini/Antigravity as separate tools, manually copying context between them. There is no validation between steps, no audit trail, and no way to resume when something fails.
+If you're using multiple AI coding agents, you already know the drill: copy output from one tool, paste it into the next, hope nothing breaks in between, and when it does, good luck figuring out where things went wrong.
 
-On top of that:
+That's the first problem -- **no orchestration layer.** Each agent is its own island.
 
-- **Cloud API tokens are expensive.** A complex multi-agent task that chains research, planning, and execution burns through tokens fast.
-- **Local LLMs are cheap but weak on their own.** A single local model can't reliably handle a full multi-step coding workflow end to end.
+The second problem is cost. **Cloud tokens add up fast** when you're chaining research, planning, and execution across three different models. But **local LLMs can't do the whole job alone** -- they're good enough for parts of the workflow, not all of it.
 
-OpenCAC solves both problems. It wraps multiple agents into a structured pipeline where each layer critiques the one above it before passing work downstream. When running locally, speculative decoding keeps inference fast, and the pipeline's built-in critique layer catches low-quality outputs before they cause damage -- so you save tokens without giving up safety. Cloud mode works just as well when you have the budget and want the strongest models.
+OpenCAC tackles both. It gives the agents a shared protocol so they talk to each other through validated, structured messages instead of raw text. Each stage critiques the one before it. And the whole thing can run on local llama.cpp endpoints with speculative decoding -- the pipeline's critique step catches bad outputs before they hit execution, so local quality issues don't snowball. When you want cloud models, just flip the mode.
 
-## What It Does
+## What it does
 
-### 1. Four-role pipeline
+**Pipeline.** Four roles, one after another:
 
 ```
 dispatcher → antigravity (research) → claude-code (plan) → codex (execute)
 ```
 
-Every layer produces a structured protocol envelope. The downstream agent critiques and validates the upstream output before acting on it. Codex runs `assess_plan` before execution -- dangerous commands get rejected, not blindly run.
+Each role produces a structured envelope. The next role validates it and pushes back if something looks wrong. Codex won't execute a plan until `assess_plan` signs off -- dangerous commands get rejected, not run.
 
-### 2. Three routing modes
+**Routing.** Three modes depending on what you have available:
 
-| Mode        | When to use                                                                                                         |
-| ----------- | ------------------------------------------------------------------------------------------------------------------- |
-| **private** | All traffic stays on loopback. Private guard script must be enabled. For sensitive code or air-gapped environments. |
-| **cloud**   | Routes through cloud API tokens. No local infrastructure needed.                                                    |
-| **hybrid**  | Cloud-first, automatic fallback to local LLM endpoints when tokens are missing.                                     |
+| Mode      | What happens                                                              |
+| --------- | ------------------------------------------------------------------------- |
+| `private` | Everything on loopback. Nothing leaves the machine.                       |
+| `cloud`   | Goes through cloud API tokens.                                            |
+| `hybrid`  | Tries cloud first, falls back to local endpoints when tokens are missing. |
 
-### 3. Local LLM with speculative decoding
+**Speculative decoding for local LLMs.** Each role can point to its own llama.cpp server. OpenCAC generates the `llama-server` command with the right spec flags (n-gram cache or draft model) and probes each endpoint before the pipeline starts. The critique layer is what makes this practical -- local outputs don't need to be perfect because bad plans get caught before execution.
 
-Each pipeline role can point to its own llama.cpp server endpoint. OpenCAC generates ready-to-use `llama-server` launch commands with the right speculation flags (n-gram cache or draft model). Before the pipeline starts, a probe verifies each endpoint is alive using constrained grammar -- no silent failures.
+**Protocol validation.** A sidecar sits between every hop and checks agent names, message types, required payload fields, and a blocked command list. Private mode enforces loopback-only on everything, including callback URLs.
 
-The critique layer is what makes local LLMs viable for the full pipeline: individual outputs don't need to be perfect because bad plans get caught and rejected before execution.
+**Audit log.** Append-only JSONL -- one line per event, timestamped, tagged with session ID. You can filter by session, pull the last N entries, or resume a crashed run from the log. Completed steps get skipped automatically.
 
-### 4. Sidecar protocol validation
+**CLI + HTTP.** Interactive REPL, one-shot `opencac run`, or a full HTTP service with `POST /run`, task polling, and per-agent message endpoints. The CLI can route through the HTTP service for distributed execution (sync or async).
 
-Every hop between agents passes through the Sidecar, which validates:
-
-- Agent whitelist (only known agents can send/receive)
-- Message type whitelist (instruction, research_report, plan, critique, exec_result, etc.)
-- Required payload fields per message type
-- Blocked command list (`rm -rf /`, `shutdown`, `mkfs`, fork bomb)
-- Private mode: loopback-only enforcement on all URLs including callbacks
-
-### 5. JSONL audit trail
-
-One JSON line per action -- timestamped, tagged with session ID and event kind. Filter by session, query the last N entries, and resume interrupted sessions by replaying from the audit log (completed steps are skipped automatically).
-
-### 6. CLI + HTTP, sync + async
-
-- **CLI**: `opencac run "task"`, `opencac audit`, `opencac resume <session-id>`, interactive REPL
-- **HTTP**: `POST /run`, `GET /tasks/<id>`, per-agent message endpoints, agent discovery card at `/.well-known/agent.json`
-- **Distributed mode**: CLI routes through the HTTP service. Supports both synchronous and async execution with status polling.
-
-### 7. Smart question routing in interactive mode
-
-The interactive CLI detects whether input is a question or a task:
-
-- Questions (`?`, `who/what/how`, Chinese question words) go straight to a QA path -- no pipeline overhead
-- Tasks run the full research-plan-critique-execute pipeline
-- Questions containing evidence keywords (`docs`, `code`, `error`, `test`) trigger a research step before answering
+**Question detection.** In interactive mode, questions (`?`, `who/what/how`, Chinese question words) skip the pipeline and get answered directly. If the question mentions `docs`, `code`, `error`, or `test`, it runs a research step first.
 
 ## Quick Start
 
