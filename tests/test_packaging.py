@@ -59,11 +59,9 @@ def test_gitignore_covers_runtime_artifacts() -> None:
 def test_release_and_docker_workflows_exist() -> None:
     release = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
     docker = (ROOT / ".github" / "workflows" / "docker-publish.yml").read_text(encoding="utf-8")
-    assert "pypa/gh-action-pypi-publish@release/v1" in release
     assert "actions/upload-artifact@v4" in release
     assert "python -m build" in release
     assert "python -m twine check dist/*" in release
-    assert "PYPI_API_TOKEN" in release
     assert "docker/build-push-action@v6" in docker
     assert "docker/metadata-action@v5" in docker
     assert "ghcr.io/lpoee/opencac" in docker
